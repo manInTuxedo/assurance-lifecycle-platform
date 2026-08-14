@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Assurance Platform — Finding Lifecycle & SLA Management</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 8px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  .glow-red { box-shadow: 0 0 28px -8px rgba(244, 63, 94, 0.55); }
+  .glow-cyan { box-shadow: 0 0 28px -8px rgba(34, 211, 238, 0.45); }
+  .fade-in { animation: fadeIn .3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  select option { background-color: #0f172a; color: #e2e8f0; }
+  .spin { animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .nav-active { background: rgba(34, 211, 238, 0.12); color: #22d3ee; border-left-color: #22d3ee; }
+  input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
+</style>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen antialiased">
+
+<div class="flex min-h-screen">
+  <!-- ============================ SIDEBAR ============================ -->
+  <aside class="hidden lg:flex flex-col w-60 shrink-0 border-r border-slate-800/80 bg-slate-900/40 sticky top-0 h-screen">
+    <div class="flex items-center gap-3 px-4 py-4 border-b border-slate-800/80">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-700 flex items-center justify-center glow-cyan">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-semibold text-white leading-tight">Assurance Platform</p>
+        <p class="text-[10px] text-slate-500 leading-tight">Finding Lifecycle · SLA · Retest</p>
+      </div>
+    </div>
+    <nav id="sidebar-nav" class="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
+      <button data-view="dashboard" onclick="switchView('dashboard')" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-l-2 border-transparent transition-colors text-left">
+        <svg class="w-4.5 h-4.5 w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        Dashboard
+      </button>
+      <button data-view="findings" onclick="switchView('findings')" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-l-2 border-transparent transition-colors text-left">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+        Findings
+      </button>
+      <button data-view="slas" onclick="switchView('slas')" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-l-2 border-transparent transition-colors text-left">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        SLA Tracking
+      </button>
+      <button data-view="retests" onclick="switchView('retests')" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-l-2 border-transparent transition-colors text-left">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Retest &amp; Validation
+      </button>
+      <button data-view="exceptions" onclick="switchView('exceptions')" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-l-2 border-transparent transition-colors text-left">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        Exceptions
+      </button>
+      <button data-view="assets" onclick="switchView('assets')" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-l-2 border-transparent transition-colors text-left">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/></svg>
+        Assets
+      </button>
+      <button data-view="reports" onclick="switchView('reports')" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-l-2 border-transparent transition-colors text-left">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Reports
+      </button>
+      <button data-view="admin" onclick="switchView('admin')" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-l-2 border-transparent transition-colors text-left">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Administration
+      </button>
+    </nav>
+    <div class="px-4 py-3 border-t border-slate-800/80">
+      <span id="health-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-900 border border-slate-700 text-slate-400">
+        <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span><span id="health-text">connecting…</span>
+      </span>
+      <button onclick="openUploadModal()" class="mt-2 w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-sm font-semibold transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        Ingest Scan
+      </button>
+    </div>
+  </aside>
+
+  <!-- ======================= MOBILE HEADER ======================= -->
+  <div class="lg:hidden fixed top-0 inset-x-0 z-40 bg-slate-950/95 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-700 flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      </div>
+      <p class="text-sm font-semibold text-white">Assurance Platform</p>
+    </div>
+    <button onclick="openUploadModal()" class="px-3 py-1.5 rounded-lg bg-cyan-500 text-slate-950 text-xs font-semibold">Ingest</button>
+  </div>
+
+  <main class="flex-1 min-w-0 lg:ml-0 pt-16 lg:pt-0">
+    <!-- Mobile nav bar -->
+    <div class="lg:hidden sticky top-12 z-30 bg-slate-950/95 border-b border-slate-800 overflow-x-auto px-2 py-2 flex gap-1" style="top: 51px">
+      <button onclick="switchView('dashboard')" data-view="dashboard" class="nav-btn-m whitespace-nowrap px-3 py-1.5 rounded-lg text-xs text-slate-400">Dashboard</button>
+      <button onclick="switchView('findings')" data-view="findings" class="nav-btn-m whitespace-nowrap px-3 py-1.5 rounded-lg text-xs text-slate-400">Findings</button>
+      <button onclick="switchView('slas')" data-view="slas" class="nav-btn-m whitespace-nowrap px-3 py-1.5 rounded-lg text-xs text-slate-400">SLA</button>
+      <button onclick="switchView('retests')" data-view="retests" class="nav-btn-m whitespace-nowrap px-3 py-1.5 rounded-lg text-xs text-slate-400">Retest</button>
+      <button onclick="switchView('exceptions')" data-view="exceptions" class="nav-btn-m whitespace-nowrap px-3 py-1.5 rounded-lg text-xs text-slate-400">Exceptions</button>
+      <button onclick="switchView('assets')" data-view="assets" class="nav-btn-m whitespace-nowrap px-3 py-1.5 rounded-lg text-xs text-slate-400">Assets</button>
+      <button onclick="switchView('reports')" data-view="reports" class="nav-btn-m whitespace-nowrap px-3 py-1.5 rounded-lg text-xs text-slate-400">Reports</button>
+      <button onclick="switchView('admin')" data-view="admin" class="nav-btn-m whitespace-nowrap px-3 py-1.5 rounded-lg text-xs text-slate-400">Admin</button>
+    </div>
+
+    <div class="max-w-[1500px] mx-auto px-4 py-6 space-y-6">
+
+      <!-- ========================== DASHBOARD ========================== -->
+      <section id="view-dashboard" class="view space-y-6">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+            <p class="text-xs text-slate-500 font-medium">Total Findings</p>
+            <p id="d-total" class="text-3xl font-bold text-white font-mono">—</p>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+            <p class="text-xs text-slate-500 font-medium">Open Findings</p>
+            <p id="d-open" class="text-3xl font-bold text-amber-400 font-mono">—</p>
+          </div>
+          <div class="rounded-xl border border-rose-500/40 bg-rose-500/5 p-4 glow-red">
+            <p class="text-xs text-rose-400/80 font-medium">SLA Breached</p>
+            <p id="d-breached" class="text-3xl font-bold text-rose-400 font-mono">—</p>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+            <p class="text-xs text-slate-500 font-medium">Closed</p>
+            <p id="d-closed" class="text-3xl font-bold text-emerald-400 font-mono">—</p>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+            <p class="text-xs text-slate-500 font-medium">Reappeared (Correlation)</p>
+            <p id="d-reappeared" class="text-3xl font-bold text-fuchsia-400 font-mono">—</p>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+            <p class="text-xs text-slate-500 font-medium">Pending Retest</p>
+            <p id="d-retest" class="text-3xl font-bold text-violet-400 font-mono">—</p>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+            <p class="text-xs text-slate-500 font-medium">Under Exceptions</p>
+            <p id="d-exceptions" class="text-3xl font-bold text-cyan-400 font-mono">—</p>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+            <p class="text-xs text-slate-500 font-medium">Risk Accepted</p>
+            <p id="d-accepted" class="text-3xl font-bold text-slate-400 font-mono">—</p>
+          </div>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+            <h2 class="text-sm font-semibold text-slate-300 mb-1">Findings by Severity</h2>
+            <p class="text-xs text-slate-500 mb-3">Exposure across risk levels</p>
+            <div class="relative h-64"><canvas id="chart-severity"></canvas></div>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+            <h2 class="text-sm font-semibold text-slate-300 mb-1">SLA Compliance</h2>
+            <p class="text-xs text-slate-500 mb-3">On track · approaching · breached · exceptions</p>
+            <div class="relative h-64"><canvas id="chart-sla"></canvas></div>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5 flex flex-col min-h-0">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h2 class="text-sm font-semibold text-slate-300">Alert Channel</h2>
+                <p class="text-xs text-slate-500">Simulated webhook / email outbox</p>
+              </div>
+              <button onclick="sendTestAlert()" class="text-xs px-2.5 py-1.5 rounded-md border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors">Send test alert</button>
+            </div>
+            <div id="notifications-list" class="space-y-2 overflow-y-auto pr-1 grow max-h-80"></div>
+            <p id="notifications-empty" class="hidden text-xs text-slate-500 text-center py-6">No alerts yet.</p>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+          <h2 class="text-sm font-semibold text-slate-300 mb-1">Correlation Engine</h2>
+          <p class="text-xs text-slate-500 mb-4">Findings are matched across scans by <span class="font-mono text-cyan-400">CVE + PluginID + Asset + Port</span>. Re-detections refresh <span class="font-mono">last_seen</span>; closed findings that reappear revert to <span class="text-fuchsia-400">Open (REAPPEARED)</span> with their original age preserved.</p>
+          <button onclick="openUploadModal()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 text-sm font-medium hover:bg-cyan-500/25 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+            Ingest a scan report now
+          </button>
+        </div>
+      </section>
+
+      <!-- ========================== FINDINGS ========================== -->
+      <section id="view-findings" class="view hidden space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold text-white">Findings Registry</h2>
+            <p class="text-xs text-slate-500">Correlated findings · REAPPEARED tags · enrichment & lifecycle</p>
+          </div>
+          <button onclick="openUploadModal()" class="text-xs px-3 py-2 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25 transition-colors">+ Ingest scan</button>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+          <div class="grid grid-cols-2 lg:grid-cols-8 gap-3 mb-4">
+            <div class="col-span-2 lg:col-span-2 relative">
+              <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input id="f-search" oninput="debouncedFSearch()" type="text" placeholder="Search title, asset, CVE, plugin, signature…"
+                class="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500/60" />
+            </div>
+            <select id="f-status" onchange="fApply()" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-300 focus:outline-none focus:border-cyan-500/60">
+              <option value="">All Statuses</option>
+              <option>Open</option><option>In Progress</option><option>Pending Verification</option>
+              <option>Pending Retest</option><option>Closed</option><option>Risk Accepted</option>
+            </select>
+            <select id="f-severity" onchange="fApply()" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-300 focus:outline-none focus:border-cyan-500/60">
+              <option value="">All Severities</option>
+              <option>Critical</option><option>High</option><option>Medium</option><option>Low</option>
+            </select>
+            <select id="f-source" onchange="fApply()" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-300 focus:outline-none focus:border-cyan-500/60">
+              <option value="">All Sources</option>
+              <option>VA Scan</option><option>CIS Benchmark</option><option>Config Review</option>
+            </select>
+            <select id="f-reappeared" onchange="fApply()" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-300 focus:outline-none focus:border-cyan-500/60">
+              <option value="">Reappeared: All</option>
+              <option value="true">Reappeared only</option>
+              <option value="false">Not reappeared</option>
+            </select>
+            <select id="f-exception" onchange="fApply()" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-300 focus:outline-none focus:border-cyan-500/60">
+              <option value="">Exceptions: All</option>
+              <option value="true">Under exception</option>
+              <option value="false">No exception</option>
+            </select>
+            <select id="f-sort" onchange="fApply()" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-300 focus:outline-none focus:border-cyan-500/60">
+              <option value="severity_desc">Severity: High → Low</option>
+              <option value="severity_asc">Severity: Low → High</option>
+              <option value="due_date">SLA Due Date</option>
+              <option value="age">Age (oldest first)</option>
+              <option value="reappeared">Reappearances</option>
+              <option value="last_seen">Last Seen</option>
+            </select>
+          </div>
+          <div class="overflow-x-auto rounded-lg border border-slate-800">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-slate-950/80 text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-800">
+                  <th class="px-3 py-3 font-medium">Severity</th>
+                  <th class="px-3 py-3 font-medium">Finding</th>
+                  <th class="px-3 py-3 font-medium">Asset</th>
+                  <th class="px-3 py-3 font-medium">Plugin</th>
+                  <th class="px-3 py-3 font-medium">SLA Due</th>
+                  <th class="px-3 py-3 font-medium">Status</th>
+                  <th class="px-3 py-3 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="f-body"></tbody>
+            </table>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+            <p id="f-summary" class="text-xs text-slate-500">Loading…</p>
+            <div class="flex items-center gap-2">
+              <button id="f-prev" onclick="fPage(-1)" class="px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-slate-200 hover:border-slate-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">← Prev</button>
+              <span id="f-pageinfo" class="text-xs text-slate-500 font-mono"></span>
+              <button id="f-next" onclick="fPage(1)" class="px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-slate-200 hover:border-slate-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Next →</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================== SLA TRACKING ========================== -->
+      <section id="view-slas" class="view hidden space-y-4">
+        <div>
+          <h2 class="text-base font-semibold text-white">SLA Tracking</h2>
+          <p class="text-xs text-slate-500">Deadlines from the severity × asset-classification matrix · anchored to first detection (age never resets)</p>
+        </div>
+        <div id="sla-chips" class="grid grid-cols-2 lg:grid-cols-5 gap-3"></div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+          <div class="flex items-center justify-between gap-3 mb-3">
+            <p class="text-xs text-slate-500">All findings ordered by due date (closest first)</p>
+            <button onclick="loadSlaView()" class="text-xs px-3 py-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors">Refresh</button>
+          </div>
+          <div class="overflow-x-auto rounded-lg border border-slate-800">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-slate-950/80 text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-800">
+                  <th class="px-3 py-3 font-medium">SLA Status</th>
+                  <th class="px-3 py-3 font-medium">Finding</th>
+                  <th class="px-3 py-3 font-medium">Asset / Classification</th>
+                  <th class="px-3 py-3 font-medium">SLA Days</th>
+                  <th class="px-3 py-3 font-medium">Due Date</th>
+                  <th class="px-3 py-3 font-medium">Age</th>
+                  <th class="px-3 py-3 font-medium">Last Scan</th>
+                  <th class="px-3 py-3 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody id="sla-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================== RETEST & VALIDATION ========================== -->
+      <section id="view-retests" class="view hidden space-y-4">
+        <div>
+          <h2 class="text-base font-semibold text-white">Retest & Validation</h2>
+          <p class="text-xs text-slate-500">SLA approaching/breached + no recent scan → Pending Retest. New scans either fail the retest (stays Open, age preserved) or pass it (Closed).</p>
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4"><p class="text-xs text-slate-500">Pending Retest</p><p id="r-pending" class="text-2xl font-bold text-violet-400 font-mono">—</p></div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4"><p class="text-xs text-slate-500">Retest Failed (total)</p><p id="r-failed" class="text-2xl font-bold text-rose-400 font-mono">—</p></div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4"><p class="text-xs text-slate-500">Retest Passed (total)</p><p id="r-passed" class="text-2xl font-bold text-emerald-400 font-mono">—</p></div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 flex flex-col justify-center">
+            <button onclick="runRetestSweep()" class="px-3 py-2 rounded-lg bg-violet-500/15 border border-violet-500/40 text-violet-300 text-xs font-medium hover:bg-violet-500/25 transition-colors">Run evaluation sweep</button>
+          </div>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+          <p class="text-xs text-slate-500 mb-3">Awaiting validation rescan — upload a scan covering these assets to resolve</p>
+          <div class="overflow-x-auto rounded-lg border border-slate-800">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-slate-950/80 text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-800">
+                  <th class="px-3 py-3 font-medium">Finding</th>
+                  <th class="px-3 py-3 font-medium">Severity</th>
+                  <th class="px-3 py-3 font-medium">Asset</th>
+                  <th class="px-3 py-3 font-medium">Signature</th>
+                  <th class="px-3 py-3 font-medium">Due</th>
+                  <th class="px-3 py-3 font-medium">Age</th>
+                  <th class="px-3 py-3 font-medium">Retest Failures</th>
+                </tr>
+              </thead>
+              <tbody id="r-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================== EXCEPTIONS ========================== -->
+      <section id="view-exceptions" class="view hidden space-y-4">
+        <div>
+          <h2 class="text-base font-semibold text-white">Risk Exceptions</h2>
+          <p class="text-xs text-slate-500">Findings formally accepted by the Risk team — SLA tracking paused ("Under Exception"). Link from the findings table via Enrich.</p>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+          <div class="overflow-x-auto rounded-lg border border-slate-800">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-slate-950/80 text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-800">
+                  <th class="px-3 py-3 font-medium">Risk ID</th>
+                  <th class="px-3 py-3 font-medium">Finding</th>
+                  <th class="px-3 py-3 font-medium">Severity</th>
+                  <th class="px-3 py-3 font-medium">Asset</th>
+                  <th class="px-3 py-3 font-medium">Reason</th>
+                  <th class="px-3 py-3 font-medium">Granted</th>
+                  <th class="px-3 py-3 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="x-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================== ASSETS ========================== -->
+      <section id="view-assets" class="view hidden space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold text-white">Assets</h2>
+            <p class="text-xs text-slate-500">Classification ← SLA driver · ownership enrichment (missing inputs handling)</p>
+          </div>
+          <button onclick="openAssetModal(null)" class="text-xs px-3 py-2 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25 transition-colors">+ Register asset</button>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+          <div class="overflow-x-auto rounded-lg border border-slate-800">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-slate-950/80 text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-800">
+                  <th class="px-3 py-3 font-medium">Asset</th>
+                  <th class="px-3 py-3 font-medium">IP</th>
+                  <th class="px-3 py-3 font-medium">Classification</th>
+                  <th class="px-3 py-3 font-medium">Owner</th>
+                  <th class="px-3 py-3 font-medium">Department</th>
+                  <th class="px-3 py-3 font-medium">Findings</th>
+                  <th class="px-3 py-3 font-medium">Open</th>
+                  <th class="px-3 py-3 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="a-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================== REPORTS ========================== -->
+      <section id="view-reports" class="view hidden space-y-4">
+        <div>
+          <h2 class="text-base font-semibold text-white">Reports</h2>
+          <p class="text-xs text-slate-500">Operational metrics — aging, reopen rate, ingestion history</p>
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4"><p class="text-xs text-slate-500">Avg days to close</p><p id="rp-avg" class="text-2xl font-bold text-emerald-400 font-mono">—</p></div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4"><p class="text-xs text-slate-500">Oldest open finding (days)</p><p id="rp-maxage" class="text-2xl font-bold text-rose-400 font-mono">—</p></div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4"><p class="text-xs text-slate-500">Reappearances (events)</p><p id="rp-reap" class="text-2xl font-bold text-fuchsia-400 font-mono">—</p></div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4"><p class="text-xs text-slate-500">Scan uploads</p><p id="rp-uploads" class="text-2xl font-bold text-cyan-400 font-mono">—</p></div>
+        </div>
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+            <h3 class="text-sm font-semibold text-slate-300 mb-3">Findings by Source</h3>
+            <div class="relative h-56"><canvas id="chart-source"></canvas></div>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+            <h3 class="text-sm font-semibold text-slate-300 mb-3">Findings by Asset Classification</h3>
+            <div class="relative h-56"><canvas id="chart-class"></canvas></div>
+          </div>
+        </div>
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+            <h3 class="text-sm font-semibold text-slate-300 mb-3">Oldest Open Findings (age from first detection)</h3>
+            <div class="overflow-x-auto rounded-lg border border-slate-800">
+              <table class="w-full text-sm">
+                <thead><tr class="bg-slate-950/80 text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-800">
+                  <th class="px-3 py-2.5 font-medium">Finding</th><th class="px-3 py-2.5 font-medium">Age</th><th class="px-3 py-2.5 font-medium">Detected</th><th class="px-3 py-2.5 font-medium">Asset</th></tr></thead>
+                <tbody id="rp-oldest"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+            <h3 class="text-sm font-semibold text-slate-300 mb-3">Ingestion History</h3>
+            <div class="overflow-x-auto rounded-lg border border-slate-800">
+              <table class="w-full text-sm">
+                <thead><tr class="bg-slate-950/80 text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-800">
+                  <th class="px-3 py-2.5 font-medium">File</th><th class="px-3 py-2.5 font-medium">When</th><th class="px-3 py-2.5 font-medium">New</th><th class="px-3 py-2.5 font-medium">Updated</th><th class="px-3 py-2.5 font-medium">Reappeared</th><th class="px-3 py-2.5 font-medium">Retest F/P</th></tr></thead>
+                <tbody id="rp-uploads-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================== ADMINISTRATION ========================== -->
+      <section id="view-admin" class="view hidden space-y-4">
+        <div>
+          <h2 class="text-base font-semibold text-white">Administration — SLA Matrix</h2>
+          <p class="text-xs text-slate-500">Remediation days = f(severity, asset classification). Stored in <span class="font-mono">SLAConfiguration</span>; saving recomputes all open deadlines anchored to original detection (age preserved).</p>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+              <thead>
+                <tr class="text-left text-[11px] uppercase tracking-wider text-slate-500">
+                  <th class="px-3 py-3 font-medium">Finding Severity</th>
+                  <th class="px-3 py-3 font-medium">Critical Asset</th>
+                  <th class="px-3 py-3 font-medium">High Asset</th>
+                  <th class="px-3 py-3 font-medium">Medium Asset</th>
+                  <th class="px-3 py-3 font-medium">Low Asset</th>
+                </tr>
+              </thead>
+              <tbody id="matrix-body"></tbody>
+            </table>
+          </div>
+          <div class="flex items-center justify-between gap-3 mt-4">
+            <p class="text-xs text-slate-600">Changing a value triggers deadline recomputation across all open findings.</p>
+            <button onclick="saveMatrix()" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-sm font-semibold transition-colors">Save &amp; Recompute</button>
+          </div>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5 grid lg:grid-cols-2 gap-6">
+          <div>
+            <h3 class="text-sm font-semibold text-slate-300 mb-2">Lifecycle Model</h3>
+            <div class="flex flex-wrap items-center gap-2 text-[11px]">
+              <span class="px-2 py-1 rounded-md bg-sky-500/15 text-sky-400 border border-sky-500/30">Open</span>→
+              <span class="px-2 py-1 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">In Progress</span>→
+              <span class="px-2 py-1 rounded-md bg-violet-500/15 text-violet-400 border border-violet-500/30">Pending Verification</span>→
+              <span class="px-2 py-1 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Closed</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">SLA approaching/breached + stale scan → <span class="text-violet-300">Pending Retest</span>. Correlation can revert Closed → Open (REAPPEARED).</p>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-slate-300 mb-2">Operational Endpoints</h3>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="runSlaRefresh()" class="text-xs px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:border-slate-500 transition-colors">Refresh SLA flags</button>
+              <button onclick="runRecompute()" class="text-xs px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:border-slate-500 transition-colors">Recompute deadlines</button>
+              <button onclick="sendTestAlert()" class="text-xs px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:border-slate-500 transition-colors">Send test alert</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="pb-8 text-center text-[11px] text-slate-600">
+        Assurance Platform v1.0 · FastAPI + SQLAlchemy + SQLite · Correlation: CVE+PluginID+Asset+Port · All alerts simulated
+      </footer>
+    </div>
+  </main>
+</div>
+
+<!-- ========================== UPLOAD MODAL ========================== -->
+<div id="upload-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl p-6 fade-in">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-base font-semibold text-white">Ingest Scan Report</h3>
+      <button onclick="closeUploadModal()" class="text-slate-500 hover:text-slate-300 text-xl leading-none">&times;</button>
+    </div>
+    <div id="dropzone" class="border-2 border-dashed border-slate-700 hover:border-cyan-500/60 transition-colors rounded-xl p-8 text-center cursor-pointer bg-slate-950/40">
+      <input id="file-input" type="file" accept=".json,.nessus,.xml" class="hidden" onchange="handleFile(this.files[0])" />
+      <svg class="w-10 h-10 mx-auto text-slate-600 mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+      <p class="text-sm text-slate-400">Drag &amp; drop a scan report here, or <span class="text-cyan-400 font-medium">browse</span></p>
+      <p class="text-xs text-slate-600 mt-1">Nessus / OpenVAS XML, JSON exports · correlation on CVE+PluginID+Asset+Port</p>
+      <p id="upload-status" class="mt-3 text-xs text-slate-500"></p>
+      <div id="upload-result" class="hidden mt-4 text-left text-sm text-slate-300 space-y-2">
+        <p id="upload-result-msg"></p>
+        <div id="upload-result-chips" class="flex flex-wrap gap-2"></div>
+        <div id="upload-result-details" class="text-[11px] text-slate-500 space-y-0.5 mt-1 max-h-40 overflow-y-auto"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================== ENRICH MODAL ========================== -->
+<div id="enrich-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl p-6 fade-in max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h3 class="text-base font-semibold text-white">Enrich Finding <span id="en-id" class="text-slate-500 font-mono"></span></h3>
+        <p class="text-xs text-slate-500">Manual enrichment (missing inputs) + lifecycle transition + risk exception link</p>
+      </div>
+      <button onclick="closeEnrichModal()" class="text-slate-500 hover:text-slate-300 text-xl leading-none">&times;</button>
+    </div>
+    <div class="grid sm:grid-cols-2 gap-3 text-sm">
+      <div class="sm:col-span-2"><label class="text-xs text-slate-500 block mb-1">Title</label><input id="en-title" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60" /></div>
+      <div class="sm:col-span-2"><label class="text-xs text-slate-500 block mb-1">Description</label><textarea id="en-desc" rows="3" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60"></textarea></div>
+      <div><label class="text-xs text-slate-500 block mb-1">Severity</label>
+        <select id="en-severity" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 focus:outline-none focus:border-cyan-500/60">
+          <option>Critical</option><option>High</option><option>Medium</option><option>Low</option>
+        </select></div>
+      <div><label class="text-xs text-slate-500 block mb-1">CVSS</label><input id="en-cvss" type="number" step="0.1" min="0" max="10" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60" /></div>
+      <div><label class="text-xs text-slate-500 block mb-1">Source</label>
+        <select id="en-source" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 focus:outline-none focus:border-cyan-500/60">
+          <option>VA Scan</option><option>CIS Benchmark</option><option>Config Review</option>
+        </select></div>
+      <div><label class="text-xs text-slate-500 block mb-1">CVE ID</label><input id="en-cve" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60" placeholder="CVE-2026-0000" /></div>
+      <div><label class="text-xs text-slate-500 block mb-1">Plugin ID</label><input id="en-plugin" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60" /></div>
+      <div><label class="text-xs text-slate-500 block mb-1">Port</label><input id="en-port" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60" /></div>
+      <div><label class="text-xs text-slate-500 block mb-1">Owner</label><input id="en-owner" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60" placeholder="e.g. sre-team@corp" /></div>
+      <div><label class="text-xs text-slate-500 block mb-1">Status (lifecycle transition)</label>
+        <select id="en-status" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 focus:outline-none focus:border-cyan-500/60">
+          <option>Open</option><option>In Progress</option><option>Pending Verification</option><option>Pending Retest</option><option>Closed</option><option>Risk Accepted</option>
+        </select></div>
+      <div class="sm:col-span-2 border-t border-slate-800 pt-3 mt-1">
+        <p class="text-xs text-slate-500 mb-2 font-medium">Risk Exception (leave Risk ID empty to clear)</p>
+      </div>
+      <div><label class="text-xs text-slate-500 block mb-1">Risk ID</label><input id="en-risk" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60" placeholder="RSK-2025-0142" /></div>
+      <div><label class="text-xs text-slate-500 block mb-1">Granted by</label><input id="en-grantby" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60" /></div>
+      <div class="sm:col-span-2"><label class="text-xs text-slate-500 block mb-1">Exception reason</label><textarea id="en-reason" rows="2" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60"></textarea></div>
+      <div class="sm:col-span-2"><label class="text-xs text-slate-500 block mb-1">Notes</label><textarea id="en-notes" rows="2" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60"></textarea></div>
+    </div>
+    <div class="flex justify-end gap-2 mt-5">
+      <button onclick="closeEnrichModal()" class="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 text-sm hover:border-slate-500 transition-colors">Cancel</button>
+      <button onclick="saveEnrich()" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-sm font-semibold transition-colors">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================== ASSET MODAL ========================== -->
+<div id="asset-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl p-6 fade-in">
+    <div class="flex items-center justify-between mb-4">
+      <h3 id="am-title" class="text-base font-semibold text-white">Register Asset</h3>
+      <button onclick="closeAssetModal()" class="text-slate-500 hover:text-slate-300 text-xl leading-none">&times;</button>
+    </div>
+    <div class="space-y-3 text-sm">
+      <div><label class="text-xs text-slate-500 block mb-1">Name (hostname/IP)</label><input id="am-name" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60" /></div>
+      <div><label class="text-xs text-slate-500 block mb-1">IP Address</label><input id="am-ip" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60" /></div>
+      <div><label class="text-xs text-slate-500 block mb-1">Classification (SLA driver)</label>
+        <select id="am-class" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 focus:outline-none focus:border-cyan-500/60">
+          <option>Critical</option><option>High</option><option>Medium</option><option>Low</option>
+        </select></div>
+      <div><label class="text-xs text-slate-500 block mb-1">Owner</label><input id="am-owner" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60" /></div>
+      <div><label class="text-xs text-slate-500 block mb-1">Department</label><input id="am-dept" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500/60" /></div>
+    </div>
+    <div class="flex justify-end gap-2 mt-5">
+      <button onclick="closeAssetModal()" class="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 text-sm hover:border-slate-500 transition-colors">Cancel</button>
+      <button onclick="saveAsset()" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-sm font-semibold transition-colors">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts" class="fixed bottom-4 right-4 space-y-2 z-[60] w-80"></div>
+
+<script>
+/* =====================================================================
+   Core helpers
+===================================================================== */
+const SEV_COLORS = { Critical: '#f43f5e', High: '#f97316', Medium: '#fbbf24', Low: '#38bdf8' };
+const SEV_RGBA = { Critical: 'rgba(244,63,94,.9)', High: 'rgba(249,115,22,.9)', Medium: 'rgba(251,191,36,.9)', Low: 'rgba(56,189,248,.9)' };
+const STATUS_STYLES = {
+  'Open': 'bg-sky-500/15 text-sky-400 border-sky-500/30',
+  'In Progress': 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+  'Pending Verification': 'bg-violet-500/15 text-violet-400 border-violet-500/30',
+  'Pending Retest': 'bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/30',
+  'Closed': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  'Risk Accepted': 'bg-slate-500/15 text-slate-400 border-slate-500/30',
+};
+const SLA_STYLES = {
+  'On Track': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  'Approaching': 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+  'Breached': 'bg-rose-500/15 text-rose-400 border-rose-500/40',
+  'Under Exception': 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
+  'Resolved': 'bg-slate-500/15 text-slate-400 border-slate-500/30',
+};
+const CLASS_STYLES = {
+  'Critical': 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+  'High': 'bg-orange-500/15 text-orange-400 border-orange-500/30',
+  'Medium': 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+  'Low': 'bg-sky-500/15 text-sky-400 border-sky-500/30',
+};
+const ALL_STATUSES = ['Open', 'In Progress', 'Pending Verification', 'Pending Retest', 'Closed', 'Risk Accepted'];
+
+function esc(v) { return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+async function api(path, opts = {}) {
+  const res = await fetch(path, opts);
+  let data = null;
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error((data && (data.detail || data.message)) || `HTTP ${res.status}`);
+  return data;
+}
+function timeAgo(iso) { const t = new Date(iso); if (isNaN(t)) return ''; const s = Math.floor((Date.now() - t.getTime()) / 1000); if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + 'm ago'; if (s < 86400) return Math.floor(s / 3600) + 'h ago'; return Math.floor(s / 86400) + 'd ago'; }
+function fmtDate(iso) { const d = new Date(iso); if (isNaN(d)) return '—'; return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+function fmtDay(iso) { const d = new Date(iso); if (isNaN(d)) return '—'; return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
+function overdueDays(iso) { return Math.ceil((Date.now() - new Date(iso).getTime()) / 86400000); }
+function toast(msg, type = 'info') {
+  const colors = { error: 'border-rose-500', success: 'border-emerald-500', info: 'border-cyan-500' };
+  const icons = { error: 'text-rose-400', success: 'text-emerald-400', info: 'text-cyan-400' };
+  const el = document.createElement('div');
+  el.className = `fade-in rounded-lg border ${colors[type]} bg-slate-900 px-4 py-3 text-sm shadow-xl flex items-start gap-2.5`;
+  el.innerHTML = `<span class="${icons[type]} font-bold">●</span><span class="text-slate-200">${esc(msg)}</span>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .4s'; }, 4200);
+  setTimeout(() => el.remove(), 4700);
+}
+function badge(text, style) { return `<span class="inline-block px-2.5 py-1 rounded-full text-[11px] font-medium border whitespace-nowrap ${STYLE(style)}">${esc(text)}</span>`; }
+function STYLE(style) { return style; }
+function sevBadge(sev) {
+  return `<span class="inline-flex items-center gap-1.5 text-xs font-semibold" style="color:${SEV_COLORS[sev] || '#94a3b8'}">
+    <span class="w-2 h-2 rounded-full" style="background:${SEV_COLORS[sev] || '#94a3b8'}"></span>${esc(sev)}</span>`;
+}
+function reappearedTag(f) {
+  if (!f.reappeared) return '';
+  return `<span class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/50 animate-pulse">REAPPEARED ×${f.reappeared_count}</span>`;
+}
+function slaBadge(f) {
+  const s = f.sla_status;
+  let label = s;
+  if (s === 'Breached' && f.due_date) label = `Breached · ${overdueDays(f.due_date)}d overdue`;
+  if (s === 'Approaching' && f.due_date) label = `Approaching · due ${fmtDay(f.due_date)}`;
+  if (s === 'Under Exception') label = `Under Exception · ${f.risk_id}`;
+  const dot = s === 'Breached' ? '<span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>' : '';
+  return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${SLA_STYLES[s] || SLA_STYLES['On Track']}">${dot}${esc(label)}</span>`;
+}
+function exceptionChip(f) { return f.risk_id ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">EXC ${esc(f.risk_id)}</span>` : ''; }
+
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.font.family = 'ui-sans-serif, system-ui, sans-serif';
+Chart.defaults.borderColor = 'rgba(148,163,184,0.08)';
+const centerTextPlugin = {
+  id: 'centerText',
+  afterDraw(chart, args, options) {
+    if (!options || !options.text) return;
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return;
+    const x = (chartArea.left + chartArea.right) / 2, y = (chartArea.top + chartArea.bottom) / 2 - 4;
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '600 22px ui-sans-serif, system-ui'; ctx.fillStyle = options.color || '#e2e8f0';
+    ctx.fillText(options.text, x, y);
+    if (options.sub) { ctx.font = '400 11px ui-sans-serif, system-ui'; ctx.fillStyle = '#64748b'; ctx.fillText(options.sub, x, y + 17); }
+    ctx.restore();
+  },
+};
+let charts = { severity: null, sla: null, source: null, cls: null };
+
+/* =====================================================================
+   Navigation
+===================================================================== */
+const VIEW_LOADERS = {
+  dashboard: loadDashboard, findings: loadFindingsView, slas: loadSlaView,
+  retests: loadRetestsView, exceptions: loadExceptionsView, assets: loadAssetsView,
+  reports: loadReportsView, admin: loadAdminView,
+};
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+  document.getElementById('view-' + name).classList.remove('hidden');
+  document.getElementById('view-' + name).classList.add('fade-in');
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('nav-active', b.dataset.view === name));
+  VIEW_LOADERS[name]();
+}
+
+/* =====================================================================
+   Dashboard
+===================================================================== */
+async function loadDashboard() {
+  try {
+    const s = await api('/api/v1/stats');
+    const set = (id, v) => document.getElementById(id).textContent = v;
+    set('d-total', s.total); set('d-open', s.open); set('d-breached', s.breached);
+    set('d-closed', s.closed); set('d-reappeared', `${s.reappeared} (${s.reappeared_events} ev)`);
+    set('d-retest', s.pending_retest); set('d-exceptions', s.exceptions); set('d-accepted', s.accepted);
+
+    const sevLabels = s.by_severity.map(x => x.label), sevCounts = s.by_severity.map(x => x.count);
+    if (charts.severity) charts.severity.destroy();
+    charts.severity = new Chart(document.getElementById('chart-severity'), {
+      type: 'doughnut',
+      data: { labels: sevLabels, datasets: [{ data: sevCounts, backgroundColor: sevLabels.map(l => SEV_RGBA[l] || 'rgba(100,116,139,.9)'), borderColor: '#0f172a', borderWidth: 3 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, usePointStyle: true, pointStyle: 'circle' } }, centerText: { text: String(s.total), sub: 'total' } } },
+      plugins: [centerTextPlugin],
+    });
+
+    const c = s.sla_compliance;
+    const slaLabels = ['On Track', 'Approaching', 'Breached', 'Under Exception', 'Resolved'];
+    const slaValues = [c['On Track'] || 0, c['Approaching'] || 0, c['Breached'] || 0, c['Under Exception'] || 0, c['Resolved'] || 0];
+    const slaColors = ['rgba(16,185,129,.9)', 'rgba(251,191,36,.9)', 'rgba(244,63,94,.9)', 'rgba(34,211,238,.9)', 'rgba(100,116,139,.9)'];
+    if (charts.sla) charts.sla.destroy();
+    charts.sla = new Chart(document.getElementById('chart-sla'), {
+      type: 'doughnut',
+      data: { labels: slaLabels, datasets: [{ data: slaValues, backgroundColor: slaColors, borderColor: '#0f172a', borderWidth: 3 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, usePointStyle: true, pointStyle: 'circle' } }, centerText: { text: String(s.open), sub: 'open findings', color: '#fda4af' } } },
+      plugins: [centerTextPlugin],
+    });
+  } catch (err) { toast('Failed to load stats: ' + err.message, 'error'); }
+  try { await loadNotifications(); } catch (e) {}
+}
+
+async function loadNotifications() {
+  const list = document.getElementById('notifications-list');
+  const empty = document.getElementById('notifications-empty');
+  const alerts = await api('/api/v1/notifications?limit=10');
+  list.innerHTML = '';
+  empty.classList.toggle('hidden', alerts.length > 0);
+  const levelStyles = { critical: 'border-rose-500 bg-rose-500/10 text-rose-400', high: 'border-orange-500 bg-orange-500/10 text-orange-400', info: 'border-sky-500 bg-sky-500/10 text-sky-400' };
+  for (const n of alerts) {
+    const el = document.createElement('div');
+    el.className = 'fade-in rounded-lg border border-slate-800 bg-slate-950/60 p-3';
+    const b = levelStyles[n.level] || levelStyles.info;
+    el.innerHTML = `
+      <div class="flex items-center justify-between gap-2 mb-1">
+        <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase ${b}">${esc(n.event.replace(/_/g, ' '))}</span>
+        <span class="text-[10px] text-slate-600 whitespace-nowrap">${timeAgo(n.triggered_at)}</span>
+      </div>
+      <div class="text-xs text-slate-300 leading-snug">${esc(n.subject)}</div>
+      <div class="text-[11px] text-slate-500 mt-1 line-clamp-3">${esc(n.message)}</div>
+      <div class="text-[10px] text-slate-600 mt-1 font-mono">channel: ${esc(n.channel)}</div>`;
+    list.appendChild(el);
+  }
+}
+async function sendTestAlert() {
+  try {
+    await api('/api/v1/notifications/test', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'manual_test', level: 'info', subject: '[TEST] Assurance alert channel check', message: 'Simulated webhook/email delivery to your ticketing pipeline.' }),
+    });
+    await loadNotifications(); toast('Test alert dispatched', 'success');
+  } catch (err) { toast('Failed: ' + err.message, 'error'); }
+}
+
+/* =====================================================================
+   Findings view
+===================================================================== */
+const fState = { page: 1, size: 10, total: 0, pages: 1, search: '', status: '', severity: '', source: '', reappeared: '', exception: '', sort: 'severity_desc' };
+let fSearchTimer = null;
+async function loadFindingsView() {
+  const params = new URLSearchParams({ page: fState.page, page_size: fState.size, sort: fState.sort });
+  if (fState.search) params.set('search', fState.search);
+  if (fState.status) params.set('status', fState.status);
+  if (fState.severity) params.set('severity', fState.severity);
+  if (fState.source) params.set('source', fState.source);
+  if (fState.reappeared !== '') params.set('reappeared', fState.reappeared);
+  if (fState.exception !== '') params.set('exception', fState.exception);
+  const body = document.getElementById('f-body');
+  try {
+    const data = await api('/api/v1/findings?' + params.toString());
+    fState.page = data.page; fState.pages = data.pages; fState.total = data.total;
+    renderFindings(data.items);
+    const from = data.total === 0 ? 0 : (data.page - 1) * data.size + (data.size ? 1 : 0);
+    document.getElementById('f-summary').textContent =
+      `Showing ${from}–${Math.min(data.page * data.page_size, data.total)} of ${data.total} findings`;
+    document.getElementById('f-pageinfo').textContent = `Page ${data.page} / ${data.pages}`;
+    document.getElementById('f-prev').disabled = data.page <= 1;
+    document.getElementById('f-next').disabled = data.page >= data.pages;
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-slate-500 text-sm">${esc(err.message)}</td></tr>`;
+  }
+}
+function renderFindings(items) {
+  const body = document.getElementById('f-body');
+  body.innerHTML = '';
+  if (!items.length) {
+    body.innerHTML = `<tr><td colspan="7" class="px-4 py-10 text-center text-slate-500 text-sm">No findings match. Ingest a scan report to start the correlation engine.</td></tr>`;
+    return;
+  }
+  for (const f of items) {
+    const tr = document.createElement('tr');
+    tr.className = 'border-b border-slate-800/70 bg-slate-900/20';
+    let cve = f.cve_id ? `<a href="https://nvd.nist.gov/vuln/detail/${esc(f.cve_id)}" target="_blank" rel="noopener" class="inline-block mt-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition-colors">${esc(f.cve_id)}</a>` : '';
+    tr.innerHTML = `
+      <td class="px-3 py-3">${sevBadge(f.severity)}</td>
+      <td class="px-3 py-3 max-w-[340px]">
+        <div class="font-medium text-slate-200 text-[13px] leading-snug">${esc(f.title)}</div>
+        ${reappearedTag(f)} ${exceptionChip(f)} ${cve}
+        <div class="text-[11px] font-mono text-slate-600 mt-0.5 truncate max-w-[300px]" title="${esc(f.correlation_signature)}">sig: ${esc(f.correlation_signature)}</div>
+      </td>
+      <td class="px-3 py-3">
+        <div class="font-mono text-xs text-slate-400">${esc(f.asset_name || f.affected_asset)}</div>
+        <span class="text-[10px] px-1.5 py-0.5 rounded border ${CLASS_STYLES[f.asset_classification] || 'border-slate-700 text-slate-500'}">${esc(f.asset_classification || '—')} asset</span>
+      </td>
+      <td class="px-3 py-3 font-mono text-[11px] text-slate-500">${esc(f.plugin_id || '—')}<div class="text-slate-600">:${esc(f.port || '*')}</div></td>
+      <td class="px-3 py-3"><div class="text-[11px] font-mono text-slate-500 mb-1">${esc(f.due_date ? fmtDate(f.due_date) : '—')}</div>${slaBadge(f)}<div class="text-[10px] text-slate-600 mt-1">age ${f.age_days}d</div></td>
+      <td class="px-3 py-3"><span class="inline-block px-2.5 py-1 rounded-full text-[11px] font-medium border ${STATUS_STYLES[f.status] || 'bg-slate-800 text-slate-400 border-slate-700'}">${esc(f.status)}</span></td>
+      <td class="px-3 py-3">
+        <div class="flex flex-col gap-1.5 min-w-[150px]">
+          <button onclick="openEnrichModal(${f.id})" class="text-[11px] px-2 py-1 rounded-md border border-slate-700 text-slate-300 hover:border-cyan-500/60 hover:text-cyan-300 transition-colors">Enrich</button>
+          <select onchange="transitionFinding(${f.id}, this)" class="px-2 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-300 focus:outline-none focus:border-cyan-500/60">
+            ${ALL_STATUSES.map(s => `<option value="${s}" ${s === f.status ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </div>
+      </td>`;
+    body.appendChild(tr);
+  }
+}
+function fApply() {
+  fState.search = document.getElementById('f-search').value.trim();
+  fState.status = document.getElementById('f-status').value;
+  fState.severity = document.getElementById('f-severity').value;
+  fState.source = document.getElementById('f-source').value;
+  fState.reappeared = document.getElementById('f-reappeared').value;
+  fState.exception = document.getElementById('f-exception').value;
+  fState.sort = document.getElementById('f-sort').value;
+  fState.page = 1;
+  loadFindingsView();
+}
+function debouncedFSearch() { clearTimeout(fSearchTimer); fSearchTimer = setTimeout(fApply, 300); }
+function fPage(d) { const next = fState.page + d; if (next < 1 || next > fState.pages) return; fState.page = next; loadFindingsView(); }
+async function transitionFinding(id, select) {
+  const target = select.value;
+  try {
+    await api('/api/v1/findings/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: target }) });
+    toast(`Finding #${id} → ${target}`, 'success');
+    loadFindingsView(); loadDashboard();
+  } catch (err) { toast('Transition failed: ' + err.message, 'error'); loadFindingsView(); }
+}
+
+/* =====================================================================
+   SLA Tracking view
+===================================================================== */
+async function loadSlaView() {
+  const chips = document.getElementById('sla-chips');
+  const body = document.getElementById('sla-body');
+  try {
+    const [stats, data] = await Promise.all([
+      api('/api/v1/stats'),
+      api('/api/v1/findings?page_size=100&sort=due_date'),
+    ]);
+    const c = stats.sla_compliance;
+    const counts = { 'On Track': c['On Track'] || 0, 'Approaching': c['Approaching'] || 0, 'Breached': c['Breached'] || 0, 'Under Exception': c['Under Exception'] || 0, 'Resolved': c['Resolved'] || 0 };
+    chips.innerHTML = Object.keys(counts).map(k =>
+      `<div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 flex items-center justify-between gap-2">
+        <span class="text-xs text-slate-500">${esc(k)}</span>
+        <span class="text-xl font-bold font-mono ${k === 'Breached' ? 'text-rose-400' : k === 'Under Exception' ? 'text-cyan-400' : k === 'Approaching' ? 'text-amber-400' : k === 'Resolved' ? 'text-slate-400' : 'text-emerald-400'}">${counts[k]}</span>
+      </div>`).join('');
+
+    const items = (data.items || []).sort((a, b) => {
+      const da = a.due_date ? new Date(a.due_date) : new Date(8640000000000000);
+      const db = b.due_date ? new Date(b.due_date) : new Date(8640000000000000);
+      return da - db;
+    });
+    body.innerHTML = '';
+    if (!items.length) return;
+    for (const f of items) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-800/70 bg-slate-900/20';
+      tr.innerHTML = `
+        <td class="px-3 py-3">${slaBadge(f)}</td>
+        <td class="px-3 py-3 max-w-[300px]"><div class="text-[13px] font-medium text-slate-200 truncate">${esc(f.title)}</div>${reappearedTag(f)}</td>
+        <td class="px-3 py-3"><div class="font-mono text-xs text-slate-400">${esc(f.asset_name || f.affected_asset)}</div><span class="text-[10px] px-1.5 py-0.5 rounded border ${CLASS_STYLES[f.asset_classification] || 'border-slate-700 text-slate-500'}">${esc(f.asset_classification || '—')}</span></td>
+        <td class="px-3 py-3 font-mono text-xs text-slate-300">${f.sla_days}</td>
+        <td class="px-3 py-3 font-mono text-xs ${f.is_sla_breached ? 'text-rose-400' : 'text-slate-300'}">${esc(f.due_date ? fmtDay(f.due_date) : '—')}</td>
+        <td class="px-3 py-3 font-mono text-xs text-slate-400">${f.age_days}d ${f.reappeared && f.last_reappeared_at ? `<span class="text-fuchsia-400">(reappeared ${timeAgo(f.last_reappeared_at)})</span>` : ''}</td>
+        <td class="px-3 py-3 font-mono text-[11px] text-slate-500">${timeAgo(f.last_seen)}</td>
+        <td class="px-3 py-3"><span class="inline-block px-2.5 py-1 rounded-full text-[11px] font-medium border ${STATUS_STYLES[f.status] || 'bg-slate-800 text-slate-400 border-slate-700'}">${esc(f.status)}</span></td>`;
+      body.appendChild(tr);
+    }
+  } catch (err) { body.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-slate-500 text-sm">${esc(err.message)}</td></tr>`; }
+}
+
+/* =====================================================================
+   Retest view
+===================================================================== */
+async function loadRetestsView() {
+  const body = document.getElementById('r-body');
+  try {
+    const r = await api('/api/v1/retests');
+    document.getElementById('r-pending').textContent = r.pending;
+    document.getElementById('r-failed').textContent = r.failed_total;
+    document.getElementById('r-passed').textContent = r.passed_total;
+    body.innerHTML = '';
+    if (!r.findings.length) {
+      body.innerHTML = `<tr><td colspan="7" class="px-4 py-10 text-center text-slate-500 text-sm">No findings pending retest. The engine moves stale SLA-approaching findings here automatically.</td></tr>`;
+      return;
+    }
+    for (const f of r.findings) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-800/70 bg-slate-900/20';
+      tr.innerHTML = `
+        <td class="px-3 py-3 max-w-[320px]"><div class="text-[13px] font-medium text-slate-200">${esc(f.title)}</div>${reappearedTag(f)}</td>
+        <td class="px-3 py-3">${sevBadge(f.severity)}</td>
+        <td class="px-3 py-3 font-mono text-xs text-slate-400">${esc(f.asset_name || f.affected_asset)}</td>
+        <td class="px-3 py-3 font-mono text-[10px] text-slate-600 truncate max-w-[200px]" title="${esc(f.correlation_signature)}">${esc(f.correlation_signature)}</td>
+        <td class="px-3 py-3 font-mono text-xs text-slate-300">${esc(f.due_date ? fmtDay(f.due_date) : '—')}</td>
+        <td class="px-3 py-3 font-mono text-xs text-slate-400">${f.age_days}d</td>
+        <td class="px-3 py-3"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${f.retest_failed_count ? 'bg-rose-500/15 text-rose-400 border border-rose-500/40' : 'bg-slate-800 text-slate-500 border border-slate-700'}">${f.retest_failed_count}</span></td>`;
+      body.appendChild(tr);
+    }
+  } catch (err) { body.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-slate-500 text-sm">${esc(err.message)}</td></tr>`; }
+}
+async function runRetestSweep() {
+  try {
+    const r = await api('/api/v1/retests/evaluate', { method: 'POST' });
+    toast(`Sweep done: ${r.moved_to_retest} moved to Pending Retest, ${r.newly_breached} newly breached`, 'success');
+    loadRetestsView(); loadDashboard();
+  } catch (err) { toast('Sweep failed: ' + err.message, 'error'); }
+}
+
+/* =====================================================================
+   Exceptions view
+===================================================================== */
+async function loadExceptionsView() {
+  const body = document.getElementById('x-body');
+  try {
+    const x = await api('/api/v1/exceptions');
+    body.innerHTML = '';
+    if (!x.items.length) {
+      body.innerHTML = `<tr><td colspan="7" class="px-4 py-10 text-center text-slate-500 text-sm">No risk exceptions. Link findings via the Enrich modal (Risk ID, e.g. RSK-2025-0142).</td></tr>`;
+      return;
+    }
+    for (const f of x.items) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-800/70 bg-slate-900/20';
+      tr.innerHTML = `
+        <td class="px-3 py-3"><span class="font-mono text-xs font-semibold text-cyan-400">${esc(f.risk_id)}</span></td>
+        <td class="px-3 py-3 max-w-[300px]"><div class="text-[13px] font-medium text-slate-200 truncate">${esc(f.title)}</div>${reappearedTag(f)}</td>
+        <td class="px-3 py-3">${sevBadge(f.severity)}</td>
+        <td class="px-3 py-3 font-mono text-xs text-slate-400">${esc(f.asset_name || f.affected_asset)}</td>
+        <td class="px-3 py-3 text-xs text-slate-400 max-w-[220px]"><div class="truncate" title="${esc(f.exception_reason)}">${esc(f.exception_reason || '—')}</div></td>
+        <td class="px-3 py-3 text-[11px] text-slate-500">${esc(f.exception_granted_at ? fmtDate(f.exception_granted_at) : '—')}${f.exception_granted_by ? `<div class="text-slate-600">by ${esc(f.exception_granted_by)}</div>` : ''}</td>
+        <td class="px-3 py-3"><button onclick="liftException(${f.id})" class="text-[11px] px-2 py-1 rounded-md border border-slate-700 text-slate-300 hover:border-rose-500/60 hover:text-rose-300 transition-colors">Lift exception</button></td>`;
+      body.appendChild(tr);
+    }
+  } catch (err) { body.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-slate-500 text-sm">${esc(err.message)}</td></tr>`; }
+}
+async function liftException(id) {
+  try {
+    await api('/api/v1/findings/' + id + '/exception', { method: 'DELETE' });
+    toast('Exception lifted', 'success');
+    loadExceptionsView(); loadDashboard();
+  } catch (err) { toast('Failed: ' + err.message, 'error'); }
+}
+
+/* =====================================================================
+   Assets view
+===================================================================== */
+async function loadAssetsView() {
+  const body = document.getElementById('a-body');
+  try {
+    const assets = await api('/api/v1/assets');
+    body.innerHTML = '';
+    if (!assets.length) {
+      body.innerHTML = `<tr><td colspan="8" class="px-4 py-10 text-center text-slate-500 text-sm">No assets registered.</td></tr>`;
+      return;
+    }
+    for (const a of assets) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-800/70 bg-slate-900/20';
+      tr.innerHTML = `
+        <td class="px-3 py-3 font-mono text-xs text-slate-200 font-medium">${esc(a.name)}</td>
+        <td class="px-3 py-3 font-mono text-xs text-slate-500">${esc(a.ip_address || '—')}</td>
+        <td class="px-3 py-3"><span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium border ${CLASS_STYLES[a.classification] || ''}">${esc(a.classification)}</span></td>
+        <td class="px-3 py-3 text-xs text-slate-400">${esc(a.owner || '<span class="text-slate-600 italic">unassigned</span>')}</td>
+        <td class="px-3 py-3 text-xs text-slate-500">${esc(a.department || '—')}</td>
+        <td class="px-3 py-3 font-mono text-xs text-slate-300">${a.findings_count}</td>
+        <td class="px-3 py-3 font-mono text-xs ${a.open_findings ? 'text-amber-400' : 'text-slate-500'}">${a.open_findings}</td>
+        <td class="px-3 py-3"><button onclick="openAssetModal(${a.id})" class="text-[11px] px-2 py-1 rounded-md border border-slate-700 text-slate-300 hover:border-cyan-500/60 hover:text-cyan-300 transition-colors">Edit</button></td>`;
+      body.appendChild(tr);
+    }
+  } catch (err) { body.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-slate-500 text-sm">${esc(err.message)}</td></tr>`; }
+}
+let assetModalId = null;
+function openAssetModal(id) {
+  assetModalId = id;
+  document.getElementById('am-title').textContent = id ? 'Edit Asset' : 'Register Asset';
+  document.getElementById('am-name').value = '';
+  document.getElementById('am-ip').value = '';
+  document.getElementById('am-class').value = 'Medium';
+  document.getElementById('am-owner').value = '';
+  document.getElementById('am-dept').value = '';
+  document.getElementById('am-name').disabled = !!id;
+  document.getElementById('asset-modal').classList.remove('hidden');
+}
+function closeAssetModal() { document.getElementById('asset-modal').classList.add('hidden'); }
+async function saveAsset() {
+  const payload = {
+    name: document.getElementById('am-name').value.trim(),
+    ip_address: document.getElementById('am-ip').value.trim() || null,
+    classification: document.getElementById('am-class').value,
+    owner: document.getElementById('am-owner').value.trim() || null,
+    department: document.getElementById('am-dept').value.trim() || null,
+  };
+  try {
+    if (assetModalId) {
+      delete payload.name;
+      await api('/api/v1/assets/' + assetModalId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      toast('Asset updated — SLA deadlines recomputed', 'success');
+    } else {
+      await api('/api/v1/assets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      toast('Asset registered', 'success');
+    }
+    closeAssetModal();
+    loadAssetsView(); loadDashboard();
+  } catch (err) { toast('Failed: ' + err.message, 'error'); }
+}
+
+/* =====================================================================
+   Reports view
+===================================================================== */
+async function loadReportsView() {
+  try {
+    const r = await api('/api/v1/reports');
+    document.getElementById('rp-avg').textContent = r.avg_days_to_close + 'd';
+    document.getElementById('rp-maxage').textContent = r.open_aging_max_days + 'd';
+    document.getElementById('rp-reap').textContent = r.reappeared_events + ' (' + r.reappeared_findings + ' findings)';
+    document.getElementById('rp-uploads').textContent = r.uploads_count;
+
+    const src = document.getElementById('chart-source');
+    if (charts.source) charts.source.destroy();
+    charts.source = new Chart(src, {
+      type: 'bar',
+      data: { labels: r.by_source.map(x => x.label), datasets: [{ label: 'Findings', data: r.by_source.map(x => x.count), backgroundColor: ['rgba(34,211,238,.75)', 'rgba(251,191,36,.75)', 'rgba(167,139,250,.75)'], borderRadius: 6 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 } } } },
+    });
+
+    const cls = document.getElementById('chart-class');
+    if (charts.cls) charts.cls.destroy();
+    charts.cls = new Chart(cls, {
+      type: 'doughnut',
+      data: { labels: r.by_asset_classification.map(x => x.label), datasets: [{ data: r.by_asset_classification.map(x => x.count), backgroundColor: ['rgba(244,63,94,.9)', 'rgba(249,115,22,.9)', 'rgba(251,191,36,.9)', 'rgba(56,189,248,.9)'], borderColor: '#0f172a', borderWidth: 3 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, pointStyle: 'circle' } } } },
+    });
+
+    const oldest = document.getElementById('rp-oldest');
+    oldest.innerHTML = r.oldest_open.length ? r.oldest_open.map(f => `
+      <tr class="border-b border-slate-800/70 bg-slate-900/20">
+        <td class="px-3 py-2.5 max-w-[260px]"><div class="text-xs text-slate-200 truncate">${esc(f.title)}</div></td>
+        <td class="px-3 py-2.5 font-mono text-xs ${f.age_days >= f.sla_days ? 'text-rose-400 font-bold' : 'text-slate-400'}">${f.age_days}d</td>
+        <td class="px-3 py-2.5 font-mono text-[11px] text-slate-500">${esc(fmtDay(f.original_created_at))}</td>
+        <td class="px-3 py-2.5 font-mono text-[11px] text-slate-500">${esc(f.asset_name || f.affected_asset)}</td>
+      </tr>`).join('') : `<tr><td colspan="4" class="px-4 py-8 text-center text-slate-500 text-sm">No open findings.</td></tr>`;
+
+    const up = document.getElementById('rp-uploads-body');
+    up.innerHTML = r.uploads.length ? r.uploads.map(u => `
+      <tr class="border-b border-slate-800/70 bg-slate-900/20">
+        <td class="px-3 py-2.5 font-mono text-[11px] text-slate-400 max-w-[220px] truncate">${esc(u.filename)}${u.tool ? `<div class="text-slate-600">${esc(u.tool)}</div>` : ''}</td>
+        <td class="px-3 py-2.5 text-[11px] text-slate-500">${timeAgo(u.ingested_at)}</td>
+        <td class="px-3 py-2.5 font-mono text-[11px] text-emerald-400">+${u.created}</td>
+        <td class="px-3 py-2.5 font-mono text-[11px] text-cyan-400">${u.updated}</td>
+        <td class="px-3 py-2.5 font-mono text-[11px] ${u.reappeared ? 'text-fuchsia-400' : 'text-slate-500'}">${u.reappeared}</td>
+        <td class="px-3 py-2.5 font-mono text-[11px] text-slate-500">${u.retest_failed}/${u.retest_passed}</td>
+      </tr>`).join('') : `<tr><td colspan="6" class="px-4 py-6 text-center text-slate-500 text-sm">No uploads yet.</td></tr>`;
+  } catch (err) { toast('Failed to load reports: ' + err.message, 'error'); }
+}
+
+/* =====================================================================
+   Administration view
+===================================================================== */
+const SEVERITIES = ['Critical', 'High', 'Medium', 'Low'];
+const CLASSIFICATIONS = ['Critical', 'High', 'Medium', 'Low'];
+async function loadAdminView() {
+  const body = document.getElementById('matrix-body');
+  try {
+    const config = await api('/api/v1/sla/config');
+    const map = {};
+    config.forEach(c => { map[c.severity + '|' + c.asset_classification] = c.sla_days; });
+    body.innerHTML = '';
+    for (const sev of SEVERITIES) {
+      body.innerHTML += `
+        <tr class="border-b border-slate-800/70">
+          <td class="px-3 py-2.5">${sevBadge(sev)}</td>
+          ${CLASSIFICATIONS.map(cl => `
+            <td class="px-2 py-2.5">
+              <input type="number" min="1" max="3650" value="${map[sev + '|' + cl] || 30}"
+                data-sev="${sev}" data-cl="${cl}"
+                class="w-24 px-2 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-200 font-mono focus:outline-none focus:border-cyan-500/60" />
+            </td>`).join('')}
+        </tr>`;
+    }
+  } catch (err) { body.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500 text-sm">${esc(err.message)}</td></tr>`; }
+}
+async function saveMatrix() {
+  const updates = [];
+  document.querySelectorAll('#matrix-body input[data-sev]').forEach(inp => {
+    updates.push({ severity: inp.dataset.sev, asset_classification: inp.dataset.cl, sla_days: parseInt(inp.value, 10) || 30 });
+  });
+  try {
+    const rows = await api('/api/v1/sla/config', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ updates }) });
+    toast(`SLA matrix saved (${rows.length} rules) — deadlines recomputed`, 'success');
+    loadAdminView(); loadDashboard();
+  } catch (err) { toast('Save failed: ' + err.message, 'error'); }
+}
+async function runSlaRefresh() {
+  try {
+    const r = await api('/api/v1/sla/refresh', { method: 'POST' });
+    toast(`SLA pass: ${r.checked} checked, ${r.newly_breached} newly breached, ${r.moved_to_retest} moved to retest`, 'success');
+    loadDashboard();
+  } catch (err) { toast('Failed: ' + err.message, 'error'); }
+}
+async function runRecompute() {
+  try {
+    const r = await api('/api/v1/sla/recompute', { method: 'POST' });
+    toast(`Deadlines recomputed for ${r.recomputed} open findings`, 'success');
+    loadDashboard();
+  } catch (err) { toast('Failed: ' + err.message, 'error'); }
+}
+
+/* =====================================================================
+   Upload modal
+===================================================================== */
+function openUploadModal() {
+  document.getElementById('upload-modal').classList.remove('hidden');
+}
+function closeUploadModal() {
+  document.getElementById('upload-modal').classList.add('hidden');
+  document.getElementById('upload-status').textContent = '';
+  document.getElementById('upload-result').classList.add('hidden');
+}
+const dropzone = document.getElementById('dropzone');
+['dragenter', 'dragover'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('border-cyan-500'); }));
+['dragleave', 'drop'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('border-cyan-500'); }));
+dropzone.addEventListener('drop', e => { const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f) handleFile(f); });
+dropzone.addEventListener('click', () => document.getElementById('file-input').click());
+
+async function handleFile(file) {
+  if (!file) return;
+  const status = document.getElementById('upload-status');
+  const result = document.getElementById('upload-result');
+  status.textContent = `Correlating "${file.name}"…`;
+  result.classList.add('hidden');
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await api('/api/v1/upload', { method: 'POST', body: form });
+    status.textContent = `✓ ${res.message}`;
+    const chips = [
+      ['NEW', res.created, 'text-emerald-400'], ['REFRESHED', res.updated, 'text-cyan-400'],
+      ['REAPPEARED', res.reappeared, 'text-fuchsia-400'], ['RETEST FAILED', res.retest_failed, 'text-rose-400'],
+      ['RETEST PASSED', res.retest_passed, 'text-emerald-400'], ['SKIPPED', res.skipped, 'text-slate-500'],
+    ].map(([label, count, color]) => count > 0 || label === 'SKIPPED'
+      ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700">
+          <span class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">${label}</span>
+          <span class="font-mono font-bold ${color}">${count}</span></span>` : '').join('');
+    document.getElementById('upload-result-msg').textContent = `Assets covered: ${res.assets_covered.length}`;
+    document.getElementById('upload-result-chips').innerHTML = chips;
+    document.getElementById('upload-result-details').innerHTML = res.details.slice(0, 12).map(d =>
+      `<div><span class="font-mono ${d.action === 'created' ? 'text-emerald-400' : d.action === 'updated' ? 'text-cyan-400' : d.action === 'reappeared' ? 'text-fuchsia-400' : d.action === 'retest_passed' ? 'text-emerald-400' : d.action === 'retest_failed' ? 'text-rose-400' : 'text-slate-600'}">${d.action}</span> — ${esc(d.title)} @ ${esc(d.asset)}</div>`).join('');
+    result.classList.remove('hidden');
+    await Promise.all([loadDashboard(), loadFindingsView(), loadRetestsView()]);
+    toast(`Ingestion complete: ${res.created} new, ${res.reappeared} reappeared`, 'success');
+  } catch (err) {
+    status.textContent = `✗ ${err.message}`;
+    toast('Upload failed: ' + err.message, 'error');
+  }
+}
+
+/* =====================================================================
+   Enrich modal
+===================================================================== */
+let enrichId = null;
+function openEnrichModal(id) {
+  enrichId = id;
+  const f = window['__finding_' + id];
+  if (!f) { loadFindingForEnrich(id); return; }
+  fillEnrichForm(f);
+  document.getElementById('enrich-modal').classList.remove('hidden');
+}
+async function loadFindingForEnrich(id) {
+  try {
+    const list = await api('/api/v1/findings?page_size=100');
+    const f = (list.items || []).find(x => x.id === id);
+    if (f) { window['__finding_' + id] = f; fillEnrichForm(f); document.getElementById('enrich-modal').classList.remove('hidden'); }
+    else toast('Finding not found', 'error');
+  } catch (err) { toast('Failed: ' + err.message, 'error'); }
+}
+function fillEnrichForm(f) {
+  document.getElementById('en-id').textContent = '#' + f.id;
+  document.getElementById('en-title').value = f.title || '';
+  document.getElementById('en-desc').value = f.description || '';
+  document.getElementById('en-severity').value = f.severity || 'Medium';
+  document.getElementById('en-cvss').value = f.cvss_score ?? '';
+  document.getElementById('en-source').value = f.source || 'VA Scan';
+  document.getElementById('en-cve').value = f.cve_id || '';
+  document.getElementById('en-plugin').value = f.plugin_id || '';
+  document.getElementById('en-port').value = f.port || '';
+  document.getElementById('en-owner').value = f.owner || '';
+  document.getElementById('en-status').value = f.status || 'Open';
+  document.getElementById('en-risk').value = f.risk_id || '';
+  document.getElementById('en-grantby').value = f.exception_granted_by || '';
+  document.getElementById('en-reason').value = f.exception_reason || '';
+  document.getElementById('en-notes').value = f.notes || '';
+}
+function closeEnrichModal() { document.getElementById('enrich-modal').classList.add('hidden'); }
+function valOrNull(v) { v = v.trim(); return v === '' ? null : v; }
+async function saveEnrich() {
+  const body = {
+    title: valOrNull(document.getElementById('en-title').value),
+    description: document.getElementById('en-desc').value.trim() || null,
+    severity: document.getElementById('en-severity').value,
+    cvss_score: document.getElementById('en-cvss').value === '' ? null : parseFloat(document.getElementById('en-cvss').value),
+    source: document.getElementById('en-source').value,
+    cve_id: valOrNull(document.getElementById('en-cve').value),
+    plugin_id: valOrNull(document.getElementById('en-plugin').value),
+    port: valOrNull(document.getElementById('en-port').value),
+    owner: valOrNull(document.getElementById('en-owner').value),
+    status: document.getElementById('en-status').value,
+    risk_id: document.getElementById('en-risk').value.trim(),
+    exception_granted_by: valOrNull(document.getElementById('en-grantby').value),
+    exception_reason: document.getElementById('en-reason').value.trim() || null,
+    notes: document.getElementById('en-notes').value.trim() || null,
+  };
+  try {
+    const updated = await api('/api/v1/findings/' + enrichId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    window['__finding_' + enrichId] = updated;
+    closeEnrichModal();
+    toast(`Finding #${enrichId} updated${updated.risk_id ? ' — under exception ' + updated.risk_id : ''}`, 'success');
+    loadFindingsView(); loadDashboard(); loadSlaView();
+  } catch (err) { toast('Save failed: ' + err.message, 'error'); }
+}
+
+/* =====================================================================
+   Boot
+===================================================================== */
+(async function boot() {
+  try {
+    const h = await api('/api/v1/health');
+    const badge = document.getElementById('health-badge');
+    badge.classList.remove('text-slate-400', 'border-slate-700');
+    badge.classList.add('text-emerald-400', 'border-emerald-500/30');
+    badge.querySelector('span:first-child').classList.add('bg-emerald-400');
+    document.getElementById('health-text').textContent = `API online · v${h.version} · ${h.findings} findings`;
+  } catch (err) {
+    document.getElementById('health-text').textContent = 'API unreachable';
+  }
+  switchView('dashboard');
+  setInterval(() => {
+    if (!document.getElementById('view-dashboard').classList.contains('hidden')) loadDashboard();
+  }, 45000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+{
+  "report_name": "Corp-Network-Quarterly-Vulnerability-Scan",
+  "tool": "Nessus Professional",
+  "scan_date": "2026-08-14T09:30:00Z",
+  "generated_by": "Security Assurance Team",
+  "findings": [
+    {
+      "title": "Apache Log4j2 Remote Code Execution (Log4Shell)",
+      "description": "The remote host is affected by a remote code execution vulnerability in Log4j. An unauthenticated attacker can exploit this via crafted JNDI lookups, gaining full control of the application server. Affected component: log4j-core <= 2.14.1.",
+      "severity": "Critical",
+      "cvss_score": 10.0,
+      "cve_id": "CVE-2021-44228",
+      "plugin_id": "97833",
+      "port": 8080,
+      "affected_asset": "web-prod-01.corp.local",
+      "source": "VA Scan"
+    },
+    {
+      "title": "Apache Log4j2 Remote Code Execution (Log4Shell)",
+      "description": "Duplicate re-scan entry: same CVE + PluginID + asset + port. The correlation engine must update last_seen instead of creating a duplicate record.",
+      "severity": "Critical",
+      "cvss_score": 10.0,
+      "cve_id": "CVE-2021-44228",
+      "plugin_id": "97833",
+      "port": 8080,
+      "affected_asset": "web-prod-01.corp.local",
+      "source": "VA Scan"
+    },
+    {
+      "title": "Citrix ADC/Gateway Unauthenticated RCE",
+      "description": "Citrix ADC and Citrix Gateway are affected by a code injection vulnerability allowing unauthenticated remote code execution.",
+      "severity": "Critical",
+      "cvss_score": 9.8,
+      "cve_id": "CVE-2023-3519",
+      "plugin_id": "176488",
+      "port": 443,
+      "affected_asset": "dmz-gw-02.corp.local",
+      "source": "VA Scan"
+    },
+    {
+      "title": "Microsoft Exchange Server ProxyLogon RCE",
+      "description": "A remote code execution vulnerability in Microsoft Exchange Server allows an unauthenticated attacker to run arbitrary code with SYSTEM privileges.",
+      "severity": "Critical",
+      "cvss_score": 9.8,
+      "cve_id": "CVE-2021-26855",
+      "plugin_id": "146909",
+      "port": 443,
+      "affected_asset": "mail-01.corp.local",
+      "source": "VA Scan"
+    },
+    {
+      "title": "Spring Framework SpEL Injection (Spring4Shell)",
+      "description": "Spring Framework versions prior to 5.3.18 / 5.2.20 allow RCE when binding parameters to an object via crafted GET/POST requests.",
+      "severity": "High",
+      "cvss_score": 9.8,
+      "cve_id": "CVE-2022-22965",
+      "plugin_id": "161973",
+      "port": 8080,
+      "affected_asset": "app-03.corp.local",
+      "source": "VA Scan"
+    },
+    {
+      "title": "OpenSSL Heartbeat Information Disclosure (Heartbleed)",
+      "description": "OpenSSL 1.0.1 through 1.0.1f contains a flaw in the Heartbeat extension allowing memory disclosure of up to 64KB per request.",
+      "severity": "High",
+      "cvss_score": 7.5,
+      "cve_id": "CVE-2014-0160",
+      "plugin_id": "71843",
+      "port": 443,
+      "affected_asset": "legacy-db-01.corp.local",
+      "source": "VA Scan"
+    },
+    {
+      "title": "SMBv1 Protocol Enabled (MS17-010)",
+      "description": "SMBv1 is enabled on the remote host, exposing it to EternalBlue-style exploits. Disable SMBv1 and apply KB4012212.",
+      "severity": "High",
+      "cvss_score": 8.1,
+      "cve_id": "CVE-2017-0143",
+      "plugin_id": "97870",
+      "port": 445,
+      "affected_asset": "file-01.corp.local",
+      "source": "VA Scan"
+    },
+    {
+      "title": "TLS 1.0 Protocol Insecure Usage",
+      "description": "The remote service accepts TLS 1.0 connections. The deprecated protocol lacks modern cryptographic strength; migrate to TLS 1.2/1.3.",
+      "severity": "Medium",
+      "cvss_score": 5.9,
+      "cve_id": "CVE-2016-2183",
+      "plugin_id": "26928",
+      "port": 443,
+      "affected_asset": "web-02.corp.local",
+      "source": "VA Scan"
+    },
+    {
+      "title": "Weak Domain Password Policy",
+      "description": "The domain password policy does not enforce minimum length, complexity or account lockout thresholds, increasing brute-force risk.",
+      "severity": "Medium",
+      "cvss_score": 5.0,
+      "cve_id": null,
+      "plugin_id": "CIS-10-01-01",
+      "port": null,
+      "affected_asset": "dc-01.corp.local",
+      "source": "CIS Benchmark"
+    },
+    {
+      "title": "Unsupported Java 8 Runtime Installed",
+      "description": "End-of-life Java 8 build deployed with known security defects and no vendor patch support.",
+      "severity": "Medium",
+      "cvss_score": 6.5,
+      "cve_id": null,
+      "plugin_id": "159692",
+      "port": null,
+      "affected_asset": "app-02.corp.local",
+      "source": "VA Scan"
+    },
+    {
+      "title": "Service Accounts Running with Domain Admin Privileges",
+      "description": "Multiple Windows services are configured to run under accounts with Domain Admin membership; decompose to least privilege.",
+      "severity": "High",
+      "cvss_score": 7.2,
+      "cve_id": null,
+      "plugin_id": "CIS-05-10-02",
+      "port": null,
+      "affected_asset": "dc-01.corp.local",
+      "source": "CIS Benchmark"
+    },
+    {
+      "title": "Expired TLS Certificate on Production Gateway",
+      "description": "The TLS certificate for the production gateway has expired; renew immediately before user-facing availability is degraded.",
+      "severity": "Medium",
+      "cvss_score": 4.3,
+      "cve_id": null,
+      "plugin_id": "CR-0092",
+      "port": 443,
+      "affected_asset": "dmz-gw-02.corp.local",
+      "source": "Config Review"
+    },
+    {
+      "title": "SNMP Service Uses Public Community String",
+      "description": "SNMP is configured with the default 'public' community string, allowing unauthenticated device enumeration.",
+      "severity": "Low",
+      "cvss_score": 5.0,
+      "cve_id": null,
+      "plugin_id": "30455",
+      "port": 161,
+      "affected_asset": "infra-sw-01.corp.local",
+      "source": "VA Scan"
+    },
+    {
+      "title": "Unrestricted Network Shares (SMB)",
+      "description": "Administrative shares are exposed without explicit restriction across the LAN; restrict sharing to authorized subnets.",
+      "severity": "Low",
+      "cvss_score": 3.7,
+      "cve_id": null,
+      "plugin_id": "CIS-13-05-03",
+      "port": 445,
+      "affected_asset": "file-02.corp.local",
+      "source": "CIS Benchmark"
+    }
+  ]
+}
