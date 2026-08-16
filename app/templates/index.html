@@ -1,9 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Assurance Platform — Finding Lifecycle & SLA Management</title>
+<script>
+(function () {
+  try {
+    if (localStorage.getItem('assurance-theme') === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  } catch (e) {}
+})();
+</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
@@ -19,6 +28,49 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .nav-active { background: rgba(34, 211, 238, 0.12); color: #22d3ee; border-left-color: #22d3ee; }
   input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
+  /* ============ LIGHT THEME OVERRIDES ============ */
+  html[data-theme="light"] body { background-color: #f1f5f9; color: #1e293b; }
+  html[data-theme="light"] *::-webkit-scrollbar-thumb { background: #cbd5e1; }
+  html[data-theme="light"] select option { background-color: #ffffff; color: #1e293b; }
+  html[data-theme="light"] .bg-slate-950 { background-color: #f1f5f9; }
+  html[data-theme="light"] .bg-slate-950\/95 { background-color: rgba(241, 245, 249, .95); }
+  html[data-theme="light"] .bg-slate-950\/80 { background-color: rgba(241, 245, 249, .8); }
+  html[data-theme="light"] .bg-slate-950\/60 { background-color: rgba(241, 245, 249, .6); }
+  html[data-theme="light"] .bg-slate-950\/40 { background-color: rgba(241, 245, 249, .4); }
+  html[data-theme="light"] .bg-slate-900 { background-color: #ffffff; }
+  html[data-theme="light"] .bg-slate-900\/60 { background-color: rgba(255, 255, 255, .65); }
+  html[data-theme="light"] .bg-slate-900\/40 { background-color: rgba(255, 255, 255, .45); }
+  html[data-theme="light"] .bg-slate-900\/20 { background-color: rgba(255, 255, 255, .25); }
+  html[data-theme="light"] .bg-slate-800 { background-color: #e2e8f0; }
+  html[data-theme="light"] .bg-slate-800\/80 { background-color: rgba(226, 232, 240, .85); }
+  html[data-theme="light"] .bg-slate-800\/50 { background-color: rgba(226, 232, 240, .55); }
+  html[data-theme="light"] .hover\:bg-slate-800\/50:hover { background-color: rgba(226, 232, 240, .85); }
+  html[data-theme="light"] .bg-slate-600 { background-color: #cbd5e1; }
+  html[data-theme="light"] .bg-slate-500\/15 { background-color: rgba(100, 116, 139, .12); }
+  html[data-theme="light"] .border-slate-800 { border-color: #e2e8f0; }
+  html[data-theme="light"] .border-slate-800\/80 { border-color: rgba(226, 232, 240, .85); }
+  html[data-theme="light"] .border-slate-800\/70 { border-color: rgba(226, 232, 240, .75); }
+  html[data-theme="light"] .border-slate-700 { border-color: #cbd5e1; }
+  html[data-theme="light"] .border-slate-600 { border-color: #94a3b8; }
+  html[data-theme="light"] .border-slate-500 { border-color: #94a3b8; }
+  html[data-theme="light"] .border-slate-500\/30 { border-color: rgba(100, 116, 139, .25); }
+  html[data-theme="light"] .text-slate-200 { color: #1e293b; }
+  html[data-theme="light"] .text-slate-300 { color: #334155; }
+  html[data-theme="light"] .text-slate-400 { color: #475569; }
+  html[data-theme="light"] .text-slate-500 { color: #64748b; }
+  html[data-theme="light"] .text-fuchsia-300 { color: #c026d3; }
+  html[data-theme="light"] .text-fuchsia-400 { color: #c026d3; }
+  html[data-theme="light"] .text-violet-300 { color: #7c3aed; }
+  html[data-theme="light"] .text-violet-400 { color: #7c3aed; }
+  html[data-theme="light"] .text-sky-400 { color: #0284c7; }
+  html[data-theme="light"] .text-orange-400 { color: #ea580c; }
+  html[data-theme="light"] .text-amber-400 { color: #d97706; }
+  html[data-theme="light"] .text-rose-400 { color: #e11d48; }
+  html[data-theme="light"] .text-emerald-400 { color: #059669; }
+  html[data-theme="light"] .text-cyan-400 { color: #0891b2; }
+  html[data-theme="light"] aside p.text-white, html[data-theme="light"] .lg\:hidden p.text-white,
+  html[data-theme="light"] h2.text-white, html[data-theme="light"] h3.text-white,
+  html[data-theme="light"] #d-total { color: #0f172a; }
 </style>
 </head>
 <body class="bg-slate-950 text-slate-200 min-h-screen antialiased">
@@ -72,6 +124,11 @@
       </button>
     </nav>
     <div class="px-4 py-3 border-t border-slate-800/80">
+      <button onclick="toggleTheme()" title="Toggle white / black theme" class="mb-2 w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-slate-800/50 hover:bg-slate-800 text-slate-300 text-sm font-medium transition-colors">
+        <svg id="theme-icon-sun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <svg id="theme-icon-moon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        <span id="theme-btn-label">Light theme</span>
+      </button>
       <span id="health-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-900 border border-slate-700 text-slate-400">
         <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span><span id="health-text">connecting…</span>
       </span>
@@ -90,7 +147,13 @@
       </div>
       <p class="text-sm font-semibold text-white">Assurance Platform</p>
     </div>
-    <button onclick="openUploadModal()" class="px-3 py-1.5 rounded-lg bg-cyan-500 text-slate-950 text-xs font-semibold">Ingest</button>
+    <div class="flex items-center gap-2">
+      <button onclick="toggleTheme()" title="Toggle white / black theme" class="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/50">
+        <svg id="theme-icon-sun-m" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <svg id="theme-icon-moon-m" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+      </button>
+      <button onclick="openUploadModal()" class="px-3 py-1.5 rounded-lg bg-cyan-500 text-slate-950 text-xs font-semibold">Ingest</button>
+    </div>
   </div>
 
   <main class="flex-1 min-w-0 lg:ml-0 pt-16 lg:pt-0">
@@ -646,6 +709,27 @@ function exceptionChip(f) { return f.risk_id ? `<span class="inline-flex items-c
 Chart.defaults.color = '#94a3b8';
 Chart.defaults.font.family = 'ui-sans-serif, system-ui, sans-serif';
 Chart.defaults.borderColor = 'rgba(148,163,184,0.08)';
+const isLight = () => document.documentElement.getAttribute('data-theme') === 'light';
+const ringColor = () => isLight() ? '#ffffff' : '#0f172a';
+const centerColor = () => isLight() ? '#0f172a' : '#e2e8f0';
+function syncThemeUI() {
+  const light = isLight();
+  document.getElementById('theme-icon-sun').classList.toggle('hidden', !light);
+  document.getElementById('theme-icon-moon').classList.toggle('hidden', light);
+  document.getElementById('theme-icon-sun-m').classList.toggle('hidden', !light);
+  document.getElementById('theme-icon-moon-m').classList.toggle('hidden', light);
+  document.getElementById('theme-btn-label').textContent = light ? 'Dark theme' : 'Light theme';
+}
+function toggleTheme() {
+  const next = isLight() ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('assurance-theme', next); } catch (e) {}
+  syncThemeUI();
+  Chart.defaults.color = isLight() ? '#475569' : '#94a3b8';
+  Chart.defaults.borderColor = isLight() ? 'rgba(100,116,139,0.18)' : 'rgba(148,163,184,0.08)';
+  Object.keys(charts).forEach(k => { if (charts[k]) { try { charts[k].destroy(); } catch (e) {} charts[k] = null; } });
+  if (typeof VIEW_LOADERS[currentView] === 'function') VIEW_LOADERS[currentView]();
+}
 const centerTextPlugin = {
   id: 'centerText',
   afterDraw(chart, args, options) {
@@ -661,6 +745,7 @@ const centerTextPlugin = {
   },
 };
 let charts = { severity: null, sla: null, source: null, cls: null };
+let currentView = 'dashboard';
 
 /* =====================================================================
    Navigation
@@ -671,6 +756,7 @@ const VIEW_LOADERS = {
   reports: loadReportsView, admin: loadAdminView,
 };
 function switchView(name) {
+  currentView = name;
   document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
   document.getElementById('view-' + name).classList.remove('hidden');
   document.getElementById('view-' + name).classList.add('fade-in');
@@ -693,9 +779,9 @@ async function loadDashboard() {
     if (charts.severity) charts.severity.destroy();
     charts.severity = new Chart(document.getElementById('chart-severity'), {
       type: 'doughnut',
-      data: { labels: sevLabels, datasets: [{ data: sevCounts, backgroundColor: sevLabels.map(l => SEV_RGBA[l] || 'rgba(100,116,139,.9)'), borderColor: '#0f172a', borderWidth: 3 }] },
+      data: { labels: sevLabels, datasets: [{ data: sevCounts, backgroundColor: sevLabels.map(l => SEV_RGBA[l] || 'rgba(100,116,139,.9)'), borderColor: ringColor(), borderWidth: 3 }] },
       options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
-        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, usePointStyle: true, pointStyle: 'circle' } }, centerText: { text: String(s.total), sub: 'total' } } },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, usePointStyle: true, pointStyle: 'circle' } }, centerText: { text: String(s.total), sub: 'total', color: centerColor() } } },
       plugins: [centerTextPlugin],
     });
 
@@ -706,9 +792,9 @@ async function loadDashboard() {
     if (charts.sla) charts.sla.destroy();
     charts.sla = new Chart(document.getElementById('chart-sla'), {
       type: 'doughnut',
-      data: { labels: slaLabels, datasets: [{ data: slaValues, backgroundColor: slaColors, borderColor: '#0f172a', borderWidth: 3 }] },
+      data: { labels: slaLabels, datasets: [{ data: slaValues, backgroundColor: slaColors, borderColor: ringColor(), borderWidth: 3 }] },
       options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
-        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, usePointStyle: true, pointStyle: 'circle' } }, centerText: { text: String(s.open), sub: 'open findings', color: '#fda4af' } } },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, usePointStyle: true, pointStyle: 'circle' } }, centerText: { text: String(s.open), sub: 'open findings', color: isLight() ? '#e11d48' : '#fda4af' } } },
       plugins: [centerTextPlugin],
     });
   } catch (err) { toast('Failed to load stats: ' + err.message, 'error'); }
@@ -1035,7 +1121,7 @@ async function loadReportsView() {
     if (charts.cls) charts.cls.destroy();
     charts.cls = new Chart(cls, {
       type: 'doughnut',
-      data: { labels: r.by_asset_classification.map(x => x.label), datasets: [{ data: r.by_asset_classification.map(x => x.count), backgroundColor: ['rgba(244,63,94,.9)', 'rgba(249,115,22,.9)', 'rgba(251,191,36,.9)', 'rgba(56,189,248,.9)'], borderColor: '#0f172a', borderWidth: 3 }] },
+      data: { labels: r.by_asset_classification.map(x => x.label), datasets: [{ data: r.by_asset_classification.map(x => x.count), backgroundColor: ['rgba(244,63,94,.9)', 'rgba(249,115,22,.9)', 'rgba(251,191,36,.9)', 'rgba(56,189,248,.9)'], borderColor: ringColor(), borderWidth: 3 }] },
       options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, pointStyle: 'circle' } } } },
     });
 
@@ -1231,6 +1317,7 @@ async function saveEnrich() {
 ===================================================================== */
 (async function boot() {
   try {
+    syncThemeUI();
     const h = await api('/api/v1/health');
     const badge = document.getElementById('health-badge');
     badge.classList.remove('text-slate-400', 'border-slate-700');
