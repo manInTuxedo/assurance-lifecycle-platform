@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In · Assurance Platform</title>
+  <script>tailwind = { config: { darkMode: 'class' } };</script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    (function () {
+      var th = localStorage.getItem('assurance-theme');
+      if (th === 'light') document.documentElement.classList.remove('dark');
+    })();
+  </script>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200 min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-md">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-8">
+      <div class="flex flex-col items-center mb-8">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-blue-900/40 mb-4">AS</div>
+        <h1 class="text-2xl font-bold text-slate-800 dark:text-white">Assurance Platform</h1>
+        <p class="text-sm text-slate-400 mt-1">Finding Lifecycle & SLA Management</p>
+      </div>
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Username</label>
+          <input name="username" required autocomplete="username"
+                 class="w-full px-4 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Password</label>
+          <input name="password" type="password" required autocomplete="current-password"
+                 class="w-full px-4 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+        </div>
+        <button type="submit"
+                class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition shadow-lg shadow-blue-900/30">
+          Sign In
+        </button>
+      </form>
+      <p id="loginError" class="hidden mt-4 text-sm text-red-500 text-center"></p>
+      <p class="mt-6 text-center text-xs text-slate-400">Default credentials · <code class="font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">admin / admin</code></p>
+      <button id="themeToggle" class="mt-5 mx-auto block text-xs text-slate-400 hover:text-slate-200 transition">Toggle Light / Dark</button>
+    </div>
+  </div>
+  <script>
+    document.getElementById('themeToggle').addEventListener('click', function () {
+      var root = document.documentElement;
+      root.classList.toggle('dark');
+      localStorage.setItem('assurance-theme', root.classList.contains('dark') ? 'dark' : 'light');
+    });
+    document.getElementById('loginForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var fd = new FormData(this);
+      fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: fd.get('username'), password: fd.get('password') }),
+      }).then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+      }).then(function (res) {
+        if (res.ok) window.location.href = '/';
+        else {
+          var err = document.getElementById('loginError');
+          err.textContent = res.d.detail || 'Login failed';
+          err.classList.remove('hidden');
+        }
+      }).catch(function () {
+        var err = document.getElementById('loginError');
+        err.textContent = 'Login failed';
+        err.classList.remove('hidden');
+      });
+    });
+  </script>
+</body>
+</html>

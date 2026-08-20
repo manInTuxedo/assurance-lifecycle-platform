@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+{% block title %}Findings · Assurance Platform{% endblock %}
+{% block content %}
+
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-bold">Findings</h1>
+    <p class="text-sm text-slate-400 mt-0.5" id="findingsSub">…</p>
+  </div>
+  <div class="flex items-center gap-2">
+    {% if current_user.role != 'read_only' %}
+    <button data-btn="upload" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow">Upload Report</button>
+    {% endif %}
+    <a href="/api/reports/export" class="text-sm border border-slate-300 dark:border-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">Export CSV</a>
+  </div>
+</div>
+
+<!-- ======================= FILTER BAR ======================= -->
+<div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+  <input id="fQ" placeholder="Search finding / CVE / IP"
+         class="col-span-2 xl:col-span-2 text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+  <select id="fSource" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+    <option value="">Source: All</option><option>VA</option><option>CIS</option>
+  </select>
+  <select id="fSeverity" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+    <option value="">Severity: All</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option><option>Info</option>
+  </select>
+  <select id="fScope" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+    <option value="">Scope: All</option><option>Crown Jewel</option><option>PCI</option><option>Published</option><option>Infrastructure</option>
+  </select>
+  <select id="fEnv" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+    <option value="">Env: All</option><option>Production</option><option>Test</option><option>DR</option>
+  </select>
+  <select id="fTeam" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+    <option value="">Team: All</option><option>Server Team</option><option>Network Team</option><option>Database Team</option><option>Security Team</option><option>Middleware Team</option>
+  </select>
+  <select id="fSLA" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+    <option value="">SLA: All</option><option>Within SLA</option><option>Approaching SLA</option><option>SLA Exceeded</option><option>Under Exception</option>
+  </select>
+  <select id="fRetest" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+    <option value="">Retest: All</option><option>Pending</option><option>Passed</option><option>Failed</option><option>None</option>
+  </select>
+</div>
+
+<!-- ======================= ACTION BAR ======================= -->
+{% if current_user.role != 'read_only' %}
+<div class="flex flex-wrap items-center gap-2">
+  <button data-bulk="owner" class="text-sm px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition" disabled>Assign Owner</button>
+  <button data-bulk="retest" class="text-sm px-3 py-2 rounded-lg border border-amber-400/40 text-amber-400 hover:bg-amber-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition" disabled>Send to Retest</button>
+  <button data-bulk="exception" class="text-sm px-3 py-2 rounded-lg border border-purple-400/40 text-purple-400 hover:bg-purple-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition" disabled>Add Exception</button>
+  <button data-bulk="risk" class="text-sm px-3 py-2 rounded-lg border border-sky-400/40 text-sky-400 hover:bg-sky-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition" disabled>Link Risk ID</button>
+  <button data-bulk="close" class="text-sm px-3 py-2 rounded-lg border border-emerald-400/40 text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition" disabled>Close Finding</button>
+</div>
+{% endif %}
+
+<!-- ======================= TABLE ======================= -->
+<div class="overflow-x-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 dark:bg-slate-800/50 text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-700">
+      <tr>
+        {% if current_user.role != 'read_only' %}<th class="py-3 pl-4 w-8"><input type="checkbox" id="checkAll"></th>{% endif %}
+        <th class="py-3 px-3">Finding ID / Source</th>
+        <th class="py-3 px-3">Finding Name</th>
+        <th class="py-3 px-3">Severity</th>
+        <th class="py-3 px-3">Asset</th>
+        <th class="py-3 px-3">Scope</th>
+        <th class="py-3 px-3">Age</th>
+        <th class="py-3 px-3">SLA Status / Due</th>
+        <th class="py-3 px-3">Retest</th>
+        <th class="py-3 px-3">Exception / Risk</th>
+        <th class="py-3 px-3">Owner</th>
+      </tr>
+    </thead>
+    <tbody id="findingsBody"></tbody>
+  </table>
+  <div id="findingsEmpty" class="hidden py-10 text-center text-slate-400 text-sm">No findings match the current filters.</div>
+</div>
+
+<!-- Detail drawer -->
+<div id="detailDrawer" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/60" onclick="closeDetail()"></div>
+  <div class="absolute right-0 top-0 h-full w-full max-w-2xl bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 overflow-y-auto" id="detailBody"></div>
+</div>
+
+<!-- ======================= MODALS ======================= -->
+<div id="modalWrap"></div>
+
+<div id="uploadModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+  <div class="absolute inset-0 bg-black/60" onclick="closeUpload()"></div>
+  <div class="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 w-full max-w-md shadow-2xl">
+    <h3 class="font-bold text-lg mb-4">Upload Scan / Inventory Report</h3>
+    <form id="uploadForm" class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Report Type</label>
+        <select name="source_type" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+          <option value="va">VA Scan (.xlsx / .csv)</option>
+          <option value="assets">Asset Inventory (.xlsx / .csv)</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">File</label>
+        <input type="file" name="file" accept=".xlsx,.csv" required
+               class="w-full text-sm rounded-lg bg-slate-100 dark:bg-slate-800 border border-transparent p-2">
+      </div>
+      <button class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition">Upload & Correlate</button>
+    </form>
+    <div id="uploadResult" class="hidden mt-4 text-sm"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  var findings = [], selected = new Set();
+  var isWrite = {{ 'true' if current_user.role != 'read_only' else 'false' }};
+
+  // ---------- helpers ----------
+  function sevBadge(s) {
+    var map = { Critical: 'bg-red-500/15 text-red-500 border-red-500/40', High: 'bg-orange-500/15 text-orange-500 border-orange-500/40',
+      Medium: 'bg-amber-400/15 text-amber-500 border-amber-400/40', Low: 'bg-sky-400/15 text-sky-500 border-sky-400/40',
+      Info: 'bg-slate-400/15 text-slate-400 border-slate-400/40' };
+    return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold border ' + (map[s] || map.Info) + '">' + (s || 'Info') + '</span>';
+  }
+  function slaBadge(s, due) {
+    var map = { 'Within SLA': 'bg-emerald-500/15 text-emerald-500 border-emerald-500/40',
+      'Approaching SLA': 'bg-amber-400/15 text-amber-500 border-amber-400/40',
+      'SLA Exceeded': 'bg-red-500/15 text-red-500 border-red-500/40',
+      'Under Exception': 'bg-purple-500/15 text-purple-400 border-purple-500/40',
+      'Closed': 'bg-slate-400/15 text-slate-400 border-slate-400/40' };
+    var chip = '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold border ' + (map[s] || map['Within SLA']) + '">' + s + '</span>';
+    if (due) chip += '<div class="text-[11px] text-slate-400 mt-1">due ' + due.slice(0, 10) + '</div>';
+    return chip;
+  }
+  function scopeBadges(f) {
+    var codes = [];
+    var a = f.asset;
+    if (!a) return '<span class="text-[11px] text-slate-400">Unmapped</span>';
+    codes.push('<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 mr-1">' + a.scope + '</span>');
+    codes.push('<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/30 mr-1">' + a.environment + '</span>');
+    return codes.join('');
+  }
+  function retestBadge(r) {
+    if (!r) return '<span class="text-[11px] text-slate-500">—</span>';
+    var cls = { Pending: 'text-amber-400 bg-amber-400/10 border-amber-400/30', Passed: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30', Failed: 'text-red-500 bg-red-500/10 border-red-500/30' }[r];
+    return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold border ' + cls + '">' + r + '</span>';
+  }
+
+  // ---------- load ----------
+  function loadFindings() {
+    var params = new URLSearchParams();
+    [['q', 'fQ'], ['source', 'fSource'], ['severity', 'fSeverity'], ['scope', 'fScope'],
+     ['environment', 'fEnv'], ['owner_team', 'fTeam'], ['sla_status', 'fSLA'], ['retest', 'fRetest']].forEach(function (p) {
+      var v = document.getElementById(p[1]).value.trim();
+      if (v) params.set(p[0], v);
+    });
+    if (window.__scope && !params.get('scope')) params.set('scope', window.__scope);
+    fetch('/api/findings?' + params.toString()).then(function (r) { return r.json(); }).then(function (d) {
+      findings = d.findings;
+      selected.clear();
+      document.getElementById('checkAll').checked = false;
+      document.getElementById('findingsSub').textContent = findings.length + ' findings';
+      renderTable();
+      updateBulk();
+    }).catch(function (e) { toast(e.message, false); });
+  }
+
+  function renderTable() {
+    var tb = document.getElementById('findingsBody');
+    document.getElementById('findingsEmpty').classList.toggle('hidden', findings.length > 0);
+    tb.innerHTML = findings.map(function (f) {
+      var name = f.plugin_name;
+      if (f.is_reappeared) name += ' <span class="text-[10px] font-bold text-red-400 border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 rounded ml-1">REAPPEARED</span>';
+      var owner = f.owner || (f.asset ? f.asset.owner_team : '—');
+      return '<tr class="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40">' +
+        (isWrite ? '<td class="py-3 pl-4"><input type="checkbox" class="row-check" value="' + f.id + '" ' + (selected.has(f.id) ? 'checked' : '') + '></td>' : '') +
+        '<td class="py-3 px-3"><div class="font-semibold text-blue-500 cursor-pointer" data-detail="' + f.id + '">' + f.finding_code + '</div>' +
+        '<div class="text-[11px] text-slate-400">' + (f.source || 'VA') + '</div></td>' +
+        '<td class="py-3 px-3 max-w-[260px]"><div class="truncate">' + name + '</div>' +
+        (f.cve ? '<span class="text-[11px] font-mono text-slate-400">' + f.cve + '</span>' : '') + '</td>' +
+        '<td class="py-3 px-3">' + sevBadge(f.severity) + (f.vpr_score ? '<div class="text-[10px] text-slate-400 mt-1">VPR ' + f.vpr_score + '</div>' : '') + '</td>' +
+        '<td class="py-3 px-3 text-xs">' + (f.asset ? '<div class="font-medium">' + f.asset.name + '</div><div class="text-slate-400">' + f.ip_address + '</div>' : f.ip_address) + '</td>' +
+        '<td class="py-3 px-3">' + scopeBadges(f) + '</td>' +
+        '<td class="py-3 px-3 text-xs font-semibold">' + f.age_days + 'd</td>' +
+        '<td class="py-3 px-3" data-sla="' + f.sla_status + '">' + slaBadge(f.sla_status, f.due_date) + '</td>' +
+        '<td class="py-3 px-3">' + retestBadge(f.retest_status) + '</td>' +
+        '<td class="py-3 px-3 text-xs">' + (f.exception_id ? '<a href="/exceptions" class="text-purple-400 hover:underline font-mono">' + f.exception_id + '</a>' : '<span class="text-slate-500">—</span>') +
+        '<br>' + (f.risk_id ? '<a href="/findings" class="text-sky-400 hover:underline font-mono">' + f.risk_id + '</a>' : '<span class="text-slate-500">—</span>') + '</td>' +
+        '<td class="py-3 px-3 text-xs">' + owner + '</td></tr>';
+    }).join('');
+    document.querySelectorAll('[data-detail]').forEach(function (el) {
+      el.addEventListener('click', function () { openDetail(+el.dataset.detail); });
+    });
+    document.querySelectorAll('.row-check').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        if (cb.checked) selected.add(+cb.value); else selected.delete(+cb.value);
+        updateBulk();
+      });
+    });
+  }
+  function updateBulk() {
+    document.querySelectorAll('[data-bulk]').forEach(function (b) { b.disabled = selected.size === 0; });
+    var ca = document.getElementById('checkAll');
+    if (ca && findings.length) ca.checked = selected.size === findings.length;
+  }
+  document.getElementById('checkAll').addEventListener('change', function (e) {
+    selected.clear();
+    if (e.target.checked) findings.forEach(function (f) { selected.add(f.id); });
+    document.querySelectorAll('.row-check').forEach(function (cb) { cb.checked = e.target.checked; });
+    updateBulk();
+  });
+
+  // ---------- filters ----------
+  ['fQ', 'fSource', 'fSeverity', 'fScope', 'fEnv', 'fTeam', 'fSLA', 'fRetest'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', loadFindings);
+  });
+  document.getElementById('fQ').addEventListener('input', debounce(loadFindings, 350));
+  function debounce(fn, ms) { var t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
+  document.addEventListener('scopechange', loadFindings);
+
+  // ---------- detail drawer ----------
+  function openDetail(id) {
+    api('/api/findings/' + id).then(function (d) {
+      var f = d.finding;
+      var html = '<div class="flex justify-between items-start"><div><h2 class="text-xl font-bold">' + f.finding_code + '</h2>' +
+        '<div class="text-sm text-slate-400">' + f.plugin_name + '</div></div><button class="text-slate-400 hover:text-white" onclick="closeDetail()">✕</button></div>' +
+        '<div class="flex gap-2 mt-3">' + sevBadge(f.severity) + slaBadge(f.sla_status) + retestBadge(f.retest_status) + '</div>' +
+        '<div class="grid grid-cols-2 gap-3 mt-5 text-sm">' +
+        '<div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3"><div class="text-[11px] uppercase text-slate-400">IP / Port</div><div class="font-semibold mt-1">' + f.ip_address + ':' + (f.port || '—') + '/' + (f.protocol || '—') + '</div></div>' +
+        '<div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3"><div class="text-[11px] uppercase text-slate-400">First / Last seen</div><div class="text-xs mt-1">' + (f.first_discovered || '—').slice(0, 10) + '<br>' + (f.last_observed || '—').slice(0, 10) + '</div></div>' +
+        '<div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3"><div class="text-[11px] uppercase text-slate-400">Age / Due</div><div class="font-semibold mt-1">' + f.age_days + ' days</div><div class="text-xs text-slate-400">' + (f.due_date || '—').slice(0, 10) + '</div></div>' +
+        '<div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3"><div class="text-[11px] uppercase text-slate-400">Asset</div><div class="font-semibold mt-1">' + (f.asset ? f.asset.name : 'Unmapped') + '</div><div class="text-xs text-slate-400">' + (f.asset ? f.asset.owner_team : '') + '</div></div>' +
+        '</div>' +
+        (f.is_reappeared ? '<div class="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400"><b>Reappeared</b> after closure — reappeared ' + f.reappeared_count + '× total. Original discovery is preserved.</div>' : '') +
+        '<div class="mt-4"><h4 class="font-semibold text-sm text-slate-400 uppercase mb-2">Description</h4><p class="text-sm leading-relaxed">' + (f.description || '—') + '</p></div>' +
+        '<div class="mt-4"><h4 class="font-semibold text-sm text-slate-400 uppercase mb-2">Remediation</h4><p class="text-sm leading-relaxed whitespace-pre-line">' + (f.remediation_steps || '—') + '</p></div>' +
+        (d.exception ? '<div class="mt-4 rounded-lg border border-purple-500/30 bg-purple-500/10 p-3 text-sm"><span class="font-semibold text-purple-400">' + d.exception.exception_code + '</span> — ' + d.exception.reason + ' (expires ' + (d.exception.expires_at || 'never') + ')</div>' : '');
+      document.getElementById('detailBody').innerHTML = html;
+      document.getElementById('detailDrawer').classList.remove('hidden');
+      document.getElementById('detailDrawer').classList.add('flex');
+    }).catch(function (e) { toast(e.message, false); });
+  }
+  function closeDetail() {
+    document.getElementById('detailDrawer').classList.add('hidden');
+    document.getElementById('detailDrawer').classList.remove('flex');
+  }
+  window.closeDetail = closeDetail;
+
+  // ---------- bulk actions ----------
+  function selectedIds() { return Array.from(selected); }
+
+  function modal(title, html, onSubmit) {
+    var wrap = document.getElementById('modalWrap');
+    wrap.innerHTML = '<div class="fixed inset-0 z-[60] flex items-center justify-center"><div class="absolute inset-0 bg-black/60" onclick="closeModal()"></div>' +
+      '<div class="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 w-full max-w-md shadow-2xl">' +
+      '<h3 class="font-bold text-lg mb-4">' + title + '</h3>' + html + '</div></div>';
+    document.querySelector('#modalWrap form').addEventListener('submit', onSubmit);
+  }
+  function closeModal() { document.getElementById('modalWrap').innerHTML = ''; }
+  window.closeModal = closeModal;
+
+  function runBulk(url, payload, msg) {
+    var ids = selectedIds();
+    if (!ids.length) return;
+    var p = Object.assign({}, payload, { ids: ids });
+    api(url, { method: 'POST', body: JSON.stringify(p) }).then(function () {
+      toast(msg + ' (' + ids.length + ' findings)', true);
+      closeModal();
+      loadFindings();
+    }).catch(function (e) { toast(e.message, false); });
+  }
+
+  if (isWrite) {
+    document.querySelector('[data-bulk="owner"]').addEventListener('click', function () {
+      modal('Assign Owner', '<form class="space-y-4"><input id="ownerName" placeholder="Owner name e.g. Alex Smith" required class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">' +
+        '<button class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold">Assign</button></form>',
+        function (e) {
+          e.preventDefault();
+          runBulk('/api/findings/bulk/owner', { owner: document.getElementById('ownerName').value }, 'Owner assigned');
+        });
+    });
+    document.querySelector('[data-bulk="retest"]').addEventListener('click', function () {
+      modal('Send to Retest', '<form class="space-y-4"><p class="text-sm text-slate-400">Selected findings will move to <b class="text-amber-400">Pending Retest</b> and be queued for validation.</p>' +
+        '<button class="w-full py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold">Send to Retest</button></form>',
+        function (e) { e.preventDefault(); runBulk('/api/findings/bulk/retest', {}, 'Sent to retest'); });
+    });
+    document.querySelector('[data-bulk="exception"]').addEventListener('click', function () {
+      modal('Add Exception', '<form class="space-y-4"><select id="excReason" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">' +
+        '<option>Compensating Control</option><option>Risk Accepted</option><option>Vendor Roadmap</option></select>' +
+        '<input type="date" id="excExp" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">' +
+        '<button class="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold">Create Exception</button></form>',
+        function (e) {
+          e.preventDefault();
+          runBulk('/api/findings/bulk/exception', { reason: document.getElementById('excReason').value, expires_at: document.getElementById('excExp').value }, 'Exception added');
+        });
+    });
+    document.querySelector('[data-bulk="risk"]').addEventListener('click', function () {
+      modal('Link Risk ID', '<form class="space-y-4"><input id="riskId" placeholder="RSK-2026-0042" required class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">' +
+        '<button class="w-full py-2.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-semibold">Link</button></form>',
+        function (e) { e.preventDefault(); runBulk('/api/findings/bulk/risk', { risk_id: document.getElementById('riskId').value }, 'Risk linked'); });
+    });
+    document.querySelector('[data-bulk="close"]').addEventListener('click', function () {
+      modal('Close Finding', '<form class="space-y-4"><p class="text-sm text-slate-400">Closed findings stop the SLA clock. If detected again they reopen as <b class="text-red-400">REAPPEARED</b>.</p>' +
+        '<button class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">Close</button></form>',
+        function (e) { e.preventDefault(); runBulk('/api/findings/bulk/close', {}, 'Closed'); });
+    });
+    document.querySelector('[data-btn="upload"]').addEventListener('click', function () {
+      document.getElementById('uploadModal').classList.remove('hidden');
+      document.getElementById('uploadModal').classList.add('flex');
+    });
+    window.closeUpload = function () {
+      document.getElementById('uploadModal').classList.add('hidden');
+      document.getElementById('uploadModal').classList.remove('flex');
+    };
+    document.getElementById('uploadForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var fd = new FormData(this);
+      fetch('/api/upload', { method: 'POST', body: fd }).then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+      }).then(function (res) {
+        var box = document.getElementById('uploadResult');
+        box.classList.remove('hidden');
+        if (res.ok) {
+          var s = res.d.stats;
+          box.innerHTML = '<div class="rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-sm text-emerald-500">' +
+            'Import complete: ' + s.records + ' records · ' + s.new + ' new · ' + s.updated + ' updated · ' +
+            (s.reappeared ? '<b>' + s.reappeared + ' reappeared</b>' : '0 reappeared') +
+            (s.unmapped ? ' · <b class="text-amber-400">' + s.unmapped + ' unmapped IPs</b>' : '') + '</div>';
+          toast('Upload processed', true);
+          loadFindings();
+        } else {
+          box.innerHTML = '<div class="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-500">' + (res.d.detail || 'Import failed') + '</div>';
+        }
+      }).catch(function (e) { toast(e.message, false); });
+    });
+  }
+
+  loadFindings();
+</script>
+{% endblock %}

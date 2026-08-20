@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}SLA Tracking · Assurance Platform{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold">SLA Tracking</h1>
+    <p class="text-sm text-slate-400 mt-0.5">Rule-based SLA targets · trend & projected breaches</p>
+  </div>
+  <div class="flex gap-2">
+    <button onclick="recalc()" class="text-sm border border-slate-300 dark:border-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">Recalculate All</button>
+    <a href="/settings" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow">Configure Policy</a>
+  </div>
+</div>
+
+<!-- ======================= FORECAST ======================= -->
+<div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+  <h2 class="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-1">SLA Breach Forecast <span class="normal-case">(next 14 days)</span></h2>
+  <p class="text-xs text-slate-400 mb-4">Findings whose SLA due-date falls on each day (requires remediation before that date).</p>
+  <div class="h-56"><canvas id="forecastChart"></canvas></div>
+</div>
+
+<!-- ======================= BY DOMAIN ======================= -->
+<div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+  <h2 class="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-4">SLA Status by Responsible Domain</h2>
+  <div class="h-56"><canvas id="domainChart"></canvas></div>
+</div>
+
+<!-- ======================= ITEMIZED LISTS ======================= -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-red-500/30 overflow-hidden">
+    <div class="px-4 py-3 bg-red-500/10 border-b border-red-500/30 flex items-center justify-between">
+      <h3 class="font-bold text-sm text-red-500">SLA Exceeded</h3>
+      <span id="excCount" class="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold">0</span>
+    </div>
+    <div id="excList" class="max-h-[420px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800"></div>
+  </div>
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-amber-400/30 overflow-hidden">
+    <div class="px-4 py-3 bg-amber-400/10 border-b border-amber-400/30 flex items-center justify-between">
+      <h3 class="font-bold text-sm text-amber-500">Approaching SLA</h3>
+      <span id="appCount" class="text-xs bg-amber-400/20 text-amber-400 px-2 py-0.5 rounded-full font-bold">0</span>
+    </div>
+    <div id="appList" class="max-h-[420px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800"></div>
+  </div>
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/30 overflow-hidden">
+    <div class="px-4 py-3 bg-emerald-500/10 border-b border-emerald-500/30 flex items-center justify-between">
+      <h3 class="font-bold text-sm text-emerald-500">Within SLA</h3>
+      <span id="winCount" class="text-xs bg-emerald-500/20 text-emerald-500 px-2 py-0.5 rounded-full font-bold">0</span>
+    </div>
+    <div id="winList" class="max-h-[420px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  var chartTxt = window.__theme === 'light' ? '#475569' : '#94a3b8';
+  function liHTML(f) {
+    return '<div class="px-4 py-3 flex items-center justify-between">' +
+      '<div class="min-w-0"><a href="/findings" class="text-sm font-semibold hover:text-blue-400">' + f.finding_code + '</a>' +
+      '<div class="text-xs text-slate-400 truncate max-w-[220px]">' + f.plugin_name + '</div>' +
+      '<div class="text-[11px] text-slate-500 mt-0.5">' + (f.asset || f.ip_address) + ' · ' + f.domain + '</div></div>' +
+      '<div class="text-right shrink-0"><div class="text-sm font-bold">' + f.age_days + 'd</div>' +
+      '<div class="text-[11px] text-slate-400">' + (f.due_date ? 'due ' + f.due_date.slice(0, 10) : '—') + '</div></div></div>';
+  }
+  function load() {
+    api('/api/sla-tracking').then(function (d) {
+      ['exc', 'app', 'win'].forEach(function (pfx) {
+        var key = { exc: 'exceeded', app: 'approaching', win: 'within' }[pfx];
+        document.getElementById(pfx + 'Count').textContent = d[key].length;
+        var el = document.getElementById(pfx + 'List');
+        el.innerHTML = d[key].length ? d[key].map(liHTML).join('') :
+          '<div class="px-4 py-6 text-center text-xs text-slate-400">None</div>';
+      });
+      if (window.forecastChart) window.forecastChart.destroy();
+      window.forecastChart = new Chart(document.getElementById('forecastChart'), {
+        type: 'bar',
+        data: { labels: d.forecast.labels,
+          datasets: [{ label: 'Findings due', data: d.forecast.values, backgroundColor: 'rgba(239,68,68,0.65)', borderRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { x: { ticks: { color: chartTxt, font: { size: 10 } }, grid: { display: false } },
+            y: { ticks: { color: chartTxt, font: { size: 10 }, precision: 0 }, grid: { color: 'rgba(148,163,184,0.1)' } } } },
+      });
+      if (window.domainChart) window.domainChart.destroy();
+      window.domainChart = new Chart(document.getElementById('domainChart'), {
+        type: 'bar',
+        data: { labels: d.by_domain.labels,
+          datasets: [
+            { label: 'SLA Exceeded', data: d.by_domain.exceeded, backgroundColor: '#ef4444', borderRadius: 3 },
+            { label: 'Approaching', data: d.by_domain.approaching, backgroundColor: '#f59e0b', borderRadius: 3 },
+            { label: 'Within SLA', data: d.by_domain.within, backgroundColor: '#10b981', borderRadius: 3 },
+            { label: 'Under Exception', data: d.by_domain.exception, backgroundColor: '#a855f7', borderRadius: 3 },
+          ] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true, ticks: { color: chartTxt, font: { size: 10 } }, grid: { display: false } },
+          y: { stacked: true, ticks: { color: chartTxt, precision: 0, font: { size: 10 } }, grid: { color: 'rgba(148,163,184,0.1)' } } },
+          plugins: { legend: { labels: { color: chartTxt, boxWidth: 10, font: { size: 11 } } } } },
+      });
+    });
+  }
+  function recalc() {
+    api('/api/sla-rules/recalculate', { method: 'POST' }).then(function (d) {
+      toast('Recalculated ' + d.recalculated + ' findings', true);
+      load();
+    }).catch(function (e) { toast(e.message, false); });
+  }
+  window.recalc = recalc;
+  load();
+</script>
+{% endblock %}
