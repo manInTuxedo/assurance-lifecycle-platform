@@ -1,25 +1,31 @@
-"""SQLAlchemy engine, session factory and declarative base (SQLite backend)."""
-from __future__ import annotations
-
-from pathlib import Path
+"""SQLAlchemy database setup for the Assurance platform."""
+import os
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+# ---------------------------------------------------------------------------
+# Paths - data is always stored in <project_root>/data/assurance.db
+# ---------------------------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+os.makedirs(DATA_DIR, exist_ok=True)
 
-DATABASE_URL = f"sqlite:///{DATA_DIR / 'assurance.db'}"
+DB_PATH = os.path.join(DATA_DIR, "assurance.db")
 
 engine = create_engine(
-    DATABASE_URL,
+    f"sqlite:///{DB_PATH}",
     connect_args={"check_same_thread": False},
-    echo=False,
 )
 
-SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
 
-class Base(DeclarativeBase):
-    """Declarative base for all ORM models."""
+def get_db():
+    """FastAPI dependency that yields a scoped session."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

@@ -1,185 +1,259 @@
-"""ORM models for the Assurance platform.
-
-Entities:
-    Asset           - infrastructure assets with classification & owner
-    SLAConfiguration- severity x asset-classification remediation matrix
-    Finding         - correlated security findings with full lifecycle state
-    ScanUpload      - audit log of every ingested scan file
-    Notification    - simulated webhook/email alert outbox
-"""
-from __future__ import annotations
-
-from datetime import datetime, timezone
+"""SQLAlchemy ORM models for the Assurance Finding Lifecycle platform."""
+from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
+    Column,
+    Date,
     DateTime,
     Float,
     ForeignKey,
-    Index,
     Integer,
     String,
     Text,
-    UniqueConstraint,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import relationship
 
 from .database import Base
 
+# Lifecycle statuses ---------------------------------------------------------
+STATUS_OPEN = "Open"
+STATUS_IN_PROGRESS = "In Progress"
+STATUS_PENDING_RETEST = "Pending Retest"
+STATUS_CLOSED = "Closed"
+STATUS_RISK_ACCEPTED = "Risk Accepted"
 
-def utcnow() -> datetime:
-    """Timezone-aware UTC now."""
-    return datetime.now(timezone.utc)
+OPEN_STATUSES = (STATUS_OPEN, STATUS_IN_PROGRESS, STATUS_PENDING_RETEST)
+
+# SLA statuses ---------------------------------------------------------------
+SLA_WITHIN = "Within SLA"
+SLA_APPROACHING = "Approaching SLA"
+SLA_EXCEEDED = "SLA Exceeded"
+SLA_UNDER_EXCEPTION = "Under Exception"
+SLA_CLOSED = "Closed"
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    username = Column(String(80), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(String(30), nullable=False, default="read_only")  # admin | read_write | read_only
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "username": self.username,
+            "role": self.role,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
 
 
 class Asset(Base):
-    """An infrastructure asset with business classification and ownership."""
-
     __tablename__ = "assets"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(256), unique=True, nullable=False, index=True)
-    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    os_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    classification: Mapped[str] = mapped_column(
-        String(16), nullable=False, default="Medium"
-    )  # Critical | High | Medium | Low
-    owner: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    department: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    id = Column(Integer, primary_key=True)
+    asset_code = Column(String(20), unique=True, nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    ip_address = Column(String(50), unique=True, nullable=False, index=True)
+    type = Column(String(60), default="Server")          # Server, Firewall, Database, Router...
+    scope = Column(String(60), default="Infrastructure") # Crown Jewel, PCI, Published, Infrastructure
+    environment = Column(String(30), default="Production")
+    site = Column(String(30), default="HQ")
+    owner_team = Column(String(60), default="Server Team")
+    status = Column(String(30), default="Active")
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
-    )
+    findings = relationship("Finding", back_populates="asset")
 
-    findings: Mapped[list["Finding"]] = relationship(
-        back_populates="asset", passive_deletes=True
-    )
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "asset_code": self.asset_code,
+            "name": self.name,
+            "ip_address": self.ip_address,
+            "type": self.type,
+            "scope": self.scope,
+            "environment": self.environment,
+            "site": self.site,
+            "owner_team": self.owner_team,
+            "status": self.status,
+        }
 
-
-class SLAConfiguration(Base):
-    """Dynamic SLA matrix: severity x asset classification -> remediation days."""
-
-    __tablename__ = "sla_configuration"
-    __table_args__ = (
-        UniqueConstraint(
-            "severity", "asset_classification", name="uq_sla_severity_classification"
-        ),
-    )
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    severity: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
-    asset_classification: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
-    sla_days: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
-    )
+    def why_it_matters(self):
+        scope = (self.scope or "").lower()
+        type_ = (self.type or "").lower()
+        site = (self.site or "").upper()
+        reasons = []
+        if "crown" in scope:
+            reasons.append("Classified as a **Crown Jewel** – a business critical asset whose compromise directly impacts core operations and revenue.")
+        if scope == "pci":
+            reasons.append("**PCI in-scope** asset handling or storing cardholder data – subject to PCI DSS control and remediation deadlines.")
+        if "published" in scope:
+            reasons.append("**Internet-facing / published** service – exposed to external attack surface and external scanning.")
+        if scope == "infrastructure":
+            reasons.append("**Core infrastructure** component – underpins multiple downstream services and hosts.")
+        if not reasons:
+            reasons.append("Standard business asset.")
+        if "firewall" in type_:
+            reasons.append("Network enforcement point – security posture of the perimeter depends on its hardening state.")
+        if "database" in type_:
+            reasons.append("Contains sensitive data stores – a primary target for data-exfiltration attacks.")
+        if "dr" in site.lower():
+            reasons.append("Located at the **DR site** – validation and availability matter for business continuity.")
+        return " ".join(reasons)
 
 
 class Finding(Base):
-    """A correlated security finding with lifecycle, SLA, retest and exception state.
-
-    Correlation: findings are matched across scans by ``correlation_signature``
-    (CVE + PluginID + Asset + Port). Re-encounters update ``last_seen`` only.
-    ``original_created_at`` records first detection and is NEVER reset, so
-    finding age is preserved across failed retests and reappearances.
-    """
-
     __tablename__ = "findings"
-    __table_args__ = (
-        Index("ix_findings_severity_status", "severity", "status"),
-        Index("ix_findings_sig_status", "correlation_signature", "status"),
-    )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-
-    # Detection details
-    title: Mapped[str] = mapped_column(String(512), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    severity: Mapped[str] = mapped_column(String(16), nullable=False, default="Low", index=True)
-    cvss_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    source: Mapped[str] = mapped_column(String(64), nullable=False, default="VA Scan")
-    cve_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
-    plugin_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    port: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    affected_asset: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
-    asset_id: Mapped[int | None] = mapped_column(
-        ForeignKey("assets.id", ondelete="SET NULL"), nullable=True, index=True
-    )
-    correlation_signature: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
+    id = Column(Integer, primary_key=True)
+    finding_code = Column(String(30), unique=True, nullable=False, index=True)
+    source = Column(String(20), default="VA")            # VA, CIS
+    plugin_name = Column(String(255), nullable=False, index=True)
+    severity = Column(String(20), index=True)            # Critical, High, Medium, Low, Info
+    ip_address = Column(String(50), index=True)
+    protocol = Column(String(20))
+    port = Column(Integer, nullable=True)
+    cve = Column(String(200))
+    vpr_score = Column(Float)
+    description = Column(Text)
+    remediation_steps = Column(Text)
+    plugin_output = Column(Text)
+    first_discovered = Column(DateTime, index=True)
+    last_observed = Column(DateTime, index=True)
 
     # Lifecycle
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="Open", index=True
-    )  # Open | In Progress | Pending Verification | Pending Retest | Closed | Risk Accepted
-    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    sla_days: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
-    is_sla_breached: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    status = Column(String(30), default=STATUS_OPEN, index=True)
+    sla_status = Column(String(30), default=SLA_WITHIN, index=True)
+    due_date = Column(DateTime, index=True)
+    sla_rule_applied_id = Column(Integer, ForeignKey("sla_rules.id"), nullable=True)
+    sla_days = Column(Integer, nullable=True)
 
-    # Reappearance correlation state
-    reappeared: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    reappeared_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    first_reappeared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_reappeared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Correlation
+    is_reappeared = Column(Boolean, default=False)
+    reappeared_count = Column(Integer, default=0)
+    original_created_at = Column(DateTime)
 
-    # Retest / validation
-    retest_last_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    retest_failed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    retest_passed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Relationships / links
+    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True, index=True)
+    risk_id = Column(String(50), nullable=True)          # RSK-2026-0042
+    exception_id = Column(String(50), nullable=True)     # EXC-2026-0014
+    retest_status = Column(String(30), nullable=True)    # Pending, Passed, Failed
+    owner = Column(String(80), nullable=True)
 
-    # Risk exceptions
-    risk_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
-    exception_reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    exception_granted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    exception_granted_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    asset = relationship("Asset", back_populates="findings")
+    exceptions = relationship("ExceptionRecord", back_populates="finding")
 
-    # Manual enrichment
-    owner: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    @property
+    def correlation_key(self):
+        return (self.ip_address or "", self.plugin_name or "", self.port or 0, self.protocol or "")
 
-    # Audit timeline
-    original_created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=utcnow, index=True
-    )  # FIRST detection; intentionally never reset
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
-    )
-    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
-    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    asset: Mapped[Asset | None] = relationship(back_populates="findings")
+    def age_days(self, now=None):
+        now = now or datetime.utcnow()
+        base = self.original_created_at or self.first_discovered
+        return (now - base).days if base else 0
 
 
-class ScanUpload(Base):
-    """Audit log of an ingested scan file (drives the Reports screen)."""
+class SLARule(Base):
+    __tablename__ = "sla_rules"
 
-    __tablename__ = "scan_uploads"
+    id = Column(Integer, primary_key=True)
+    priority_order = Column(Integer, nullable=False, default=0)
+    source = Column(String(20), default="Any")           # VA, CIS, Any
+    severity = Column(String(20), default="Any")         # Critical, High, Medium, Low, Any
+    asset_scope = Column(String(40), default="Any")      # Published, Crown Jewel, PCI, Infrastructure, Any
+    asset_type = Column(String(40), default="Any")       # Any, Server, Firewall, ...
+    environment = Column(String(30), default="Any")      # Production, Test, Any
+    sla_days = Column(Integer, nullable=False, default=90)
+    approaching_pct = Column(Integer, default=70)
+    retest_pct = Column(Integer, default=80)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    filename: Mapped[str] = mapped_column(String(256), nullable=False)
-    tool: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "priority_order": self.priority_order,
+            "source": self.source,
+            "severity": self.severity,
+            "asset_scope": self.asset_scope,
+            "asset_type": self.asset_type,
+            "environment": self.environment,
+            "sla_days": self.sla_days,
+            "approaching_pct": self.approaching_pct,
+            "retest_pct": self.retest_pct,
+            "is_active": self.is_active,
+        }
 
-    total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    created: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    updated: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    skipped: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    reappeared: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    retest_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    retest_passed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    assets_covered: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+
+class ExceptionRecord(Base):
+    __tablename__ = "exception_records"
+
+    id = Column(Integer, primary_key=True)
+    exception_code = Column(String(30), unique=True, nullable=False)
+    finding_id = Column(Integer, ForeignKey("findings.id"), index=True)
+    reason = Column(String(60), default="Risk Accepted")  # Compensating Control, Risk Accepted, Vendor Roadmap
+    expires_at = Column(Date, nullable=True)
+    status = Column(String(30), default="Active")         # Active, Expired
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(80), nullable=True)
+
+    finding = relationship("Finding", back_populates="exceptions")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "exception_code": self.exception_code,
+            "finding_id": self.finding_id,
+            "reason": self.reason,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "status": self.status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_by": self.created_by,
+        }
 
 
-class Notification(Base):
-    """Simulated webhook/email alert outbox."""
+class AuditFile(Base):
+    __tablename__ = "audit_files"
 
-    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True)
+    filename = Column(String(255))
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    record_count = Column(Integer, default=0)
+    source_type = Column(String(30))                      # VA Scan, Asset Inventory
+    unmapped_ips = Column(Integer, default=0)
+    new_findings = Column(Integer, default=0)
+    updated_findings = Column(Integer, default=0)
+    reappeared_findings = Column(Integer, default=0)
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    channel: Mapped[str] = mapped_column(String(16), nullable=False, default="webhook")
-    event: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
-    subject: Mapped[str] = mapped_column(String(512), nullable=False)
-    message: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    level: Mapped[str] = mapped_column(String(16), nullable=False, default="info", index=True)
-    triggered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "filename": self.filename,
+            "uploaded_at": self.uploaded_at.isoformat() if self.uploaded_at else None,
+            "record_count": self.record_count,
+            "source_type": self.source_type,
+            "unmapped_ips": self.unmapped_ips,
+            "new_findings": self.new_findings,
+            "updated_findings": self.updated_findings,
+            "reappeared_findings": self.reappeared_findings,
+        }
+
+
+class PolicyChangeLog(Base):
+    __tablename__ = "policy_change_logs"
+
+    id = Column(Integer, primary_key=True)
+    action = Column(String(500), nullable=False)
+    user = Column(String(80))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "action": self.action,
+            "user": self.user,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Assurance Platform{% endblock %}</title>
+  <script>
+    tailwind = { config: { darkMode: 'class' } };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script>
+    (function () {
+      var th = localStorage.getItem('assurance-theme');
+      var root = document.documentElement;
+      if (th === 'light') { root.classList.remove('dark'); } else { root.classList.add('dark'); }
+      window.__theme = th === 'light' ? 'light' : 'dark';
+    })();
+  </script>
+  <style>
+    html, body { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 8px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    .flow-arrow { position: relative; }
+    .flow-arrow::after {
+      content: ''; position: absolute; top: 50%; right: -14px; width: 12px; height: 2px;
+      background: currentColor; transform: translateY(-1px);
+    }
+    .flow-arrow::before {
+      content: ''; position: absolute; top: 50%; right: -14px; width: 6px; height: 6px;
+      border-top: 2px solid currentColor; border-right: 2px solid currentColor;
+      transform: translateY(-3px) rotate(45deg);
+    }
+    .flow-arrow:last-child::before, .flow-arrow:last-child::after { display: none; }
+    input[type=checkbox] { accent-color: #2563eb; }
+  </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200 min-h-screen">
+  <div class="flex min-h-screen">
+    <!-- ======================= SIDEBAR ======================= -->
+    <aside class="w-64 shrink-0 bg-slate-900 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col fixed inset-y-0">
+      <!-- Brand -->
+      <div class="h-16 flex items-center gap-3 px-5 border-b border-slate-800">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow">AS</div>
+        <div>
+          <div class="font-bold text-slate-100 leading-tight text-sm">Assurance Platform</div>
+          <div class="text-[10px] uppercase tracking-widest text-slate-400">Finding Lifecycle & SLA</div>
+        </div>
+      </div>
+      <!-- Nav -->
+      <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+        {% set nav = [
+          ('/', 'dashboard', 'Dashboard'),
+          ('/findings', 'findings', 'Findings'),
+          ('/sla-tracking', 'sla_tracking', 'SLA Tracking'),
+          ('/retests', 'retests', 'Retest & Validation'),
+          ('/exceptions', 'exceptions', 'Exceptions'),
+          ('/assets', 'assets', 'Assets'),
+          ('/reports', 'reports', 'Reports'),
+          ('/settings', 'settings', 'Settings')
+        ] %}
+        {% for href, key, label in nav %}
+          {% if key != 'settings' or current_user.role == 'admin' %}
+          {% set active = path == href %}
+          <a href="{{ href }}"
+             class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition
+                    {{ 'bg-blue-600 text-white shadow-md shadow-blue-900/30' if active else 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              {% if key == 'dashboard' %}
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10h4v-6h6v6h4V10"/>
+              {% elif key == 'findings' %}
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M5 5h14.5v14H5z" stroke-linejoin="round"/>
+              {% elif key == 'sla_tracking' %}
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l2.5 1.5M12 22a9 9 0 100-18 9 9 0 000 18z"/>
+              {% elif key == 'retests' %}
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6M5 17l7-7M19 7l-7 7"/>
+              {% elif key == 'exceptions' %}
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.5 8.5l7 7M8.5 15.5l7-7M12 3l9 9-9 9-9-9 9-9z"/>
+              {% elif key == 'assets' %}
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21V7m0 0V5a2 2 0 012-2h8a2 2 0 012 2v2M7 7H3v14h18V7h-4M7 21h10"/>
+              {% elif key == 'reports' %}
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 17a5 5 0 010-10h0a5 5 0 015 5M9 17a5 5 0 0010 0M9 17h6m3-10l3 3-3 3"/>
+              {% elif key == 'settings' %}
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 4.5l.5-2h2l.5 2a7 7 0 011.2.5l1.7-1.2L18.5 6l-1 1.6a7 7 0 010 2.8l1 1.6-2.1 1.7-1.7-1.2a7 7 0 01-1.2.5l-.5 2h-2l-.5-2a7 7 0 01-1.2-.5L7.6 12 5.5 10.4l1-1.6a7 7 0 010-2.8l-1-1.6 2.1-1.7L9 5.2a7 7 0 011.5-.7zM12 8a2.5 2.5 0 100 5 2.5 2.5 0 000-5z"/>
+              {% endif %}
+            </svg>
+            {{ label }}
+          </a>
+          {% endif %}
+        {% endfor %}
+      </nav>
+      <!-- Sidebar footer -->
+      <div class="px-4 py-3 border-t border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-100 text-sm">
+            {{ current_user.username[:1]|upper }}
+          </div>
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-slate-200 truncate">{{ current_user.username }}</div>
+            <div class="text-[11px] text-slate-400 uppercase tracking-wide">{{ current_user.role }}</div>
+          </div>
+          <form method="post" action="/logout" class="ml-auto">
+            <button class="text-slate-400 hover:text-red-400 transition" title="Log out">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ======================= MAIN ======================= -->
+    <div class="flex-1 md:ml-64 flex flex-col">
+      <!-- Header -->
+      <header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-4 px-6 sticky top-0 z-30 backdrop-blur">
+        <div class="flex-1 relative max-w-xl">
+          <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/>
+          </svg>
+          <input id="globalSearch" type="text" placeholder="Search findings, CVEs, assets, IPs..."
+                 class="w-full pl-9 pr-3 py-2 rounded-lg text-sm bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 outline-none">
+          <div id="searchResults" class="hidden absolute top-full left-0 right-0 mt-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden max-h-96 overflow-y-auto z-50"></div>
+        </div>
+        <select id="headerScope" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent outline-none">
+          <option value="">All Scopes</option>
+          <option>Crown Jewel</option>
+          <option>PCI</option>
+          <option>Published</option>
+          <option>Infrastructure</option>
+        </select>
+        <select id="headerRange" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent outline-none">
+          <option value="30">Last 30 days</option>
+          <option value="60">Last 60 days</option>
+          <option value="90" selected>Last 90 days</option>
+          <option value="180">Last 6 months</option>
+          <option value="365">Last year</option>
+        </select>
+        <!-- Theme toggle -->
+        <button id="themeToggle" class="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition" title="Toggle theme">
+          <svg id="iconSun" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2m0 14v2M5.6 5.6l1.4 1.4m9.9 9.9l1.4 1.4M3 12h2m14 0h2M5.6 18.4l1.4-1.4m9.9-9.9l1.4-1.4M12 8a4 4 0 100 8 4 4 0 000-8z"/>
+          </svg>
+          <svg id="iconMoon" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.4 14.5A8 8 0 019.5 3.6 8 8 0 1020.4 14.5z"/>
+          </svg>
+        </button>
+        <!-- Profile -->
+        <div class="flex items-center gap-3 pl-3 border-l border-slate-200 dark:border-slate-700 relative">
+          <div class="text-right">
+            <div class="text-sm font-semibold">Alex Smith</div>
+            <div class="text-[11px] text-slate-400">{{ current_user.role }}</div>
+          </div>
+          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+            {{ current_user.username[:1]|upper }}
+          </div>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <main class="flex-1 p-6 space-y-6">
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="px-6 py-4 text-xs text-slate-400 border-t border-slate-200 dark:border-slate-800 flex justify-between">
+        <span>Assurance Finding Lifecycle & SLA Management Platform</span>
+        <span>v1.0 · Banque Misr</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toastWrap" class="fixed bottom-5 right-5 z-[100] space-y-2"></div>
+
+  <!-- ======================= BASE JS ======================= -->
+  <script>
+    function toast(msg, ok) {
+      var wrap = document.getElementById('toastWrap');
+      var el = document.createElement('div');
+      el.className = 'px-4 py-3 rounded-lg shadow-2xl text-sm font-medium text-white ' +
+        (ok ? 'bg-emerald-600' : 'bg-red-600') + ' animate-pulse';
+      el.textContent = msg;
+      wrap.appendChild(el);
+      setTimeout(function () { el.remove(); }, 3500);
+    }
+    function api(path, opts) {
+      opts = opts || {};
+      opts.headers = opts.headers || {};
+      opts.headers['Content-Type'] = 'application/json';
+      return fetch(path, opts).then(function (r) {
+        return r.json().then(function (d) {
+          if (!r.ok) throw new Error(d.detail || 'Request failed');
+          return d;
+        });
+      });
+    }
+    // ---- Theme toggle ----
+    (function () {
+      var root = document.documentElement;
+      var sun = document.getElementById('iconSun');
+      var moon = document.getElementById('iconMoon');
+      function sync() {
+        var dark = root.classList.contains('dark');
+        sun.classList.toggle('hidden', dark);
+        moon.classList.toggle('hidden', !dark);
+      }
+      sync();
+      document.getElementById('themeToggle').addEventListener('click', function () {
+        root.classList.toggle('dark');
+        localStorage.setItem('assurance-theme', root.classList.contains('dark') ? 'dark' : 'light');
+        window.__theme = root.classList.contains('dark') ? 'dark' : 'light';
+        sync();
+        document.dispatchEvent(new Event('themechange'));
+      });
+    })();
+    // ---- Global search ----
+    (function () {
+      var box = document.getElementById('globalSearch');
+      var res = document.getElementById('searchResults');
+      var timer;
+      box.addEventListener('input', function () {
+        clearTimeout(timer);
+        var q = box.value.trim();
+        if (!q) { res.classList.add('hidden'); res.innerHTML = ''; return; }
+        timer = setTimeout(function () {
+          fetch('/api/search?q=' + encodeURIComponent(q)).then(function (r) { return r.json(); })
+            .then(function (d) {
+              var html = '';
+              if (d.assets.length) {
+                html += '<div class="px-3 py-1.5 text-[11px] uppercase tracking-wider text-slate-400">Assets</div>';
+                d.assets.forEach(function (a) {
+                  html += '<a href="/assets" data-ip="' + a.ip_address + '" class="flex items-center justify-between px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700"><span class="font-medium text-sm">' + a.asset_code + ' · ' + a.name + '</span><span class="text-xs text-slate-400">' + a.ip_address + '</span></a>';
+                });
+              }
+              if (d.findings.length) {
+                html += '<div class="px-3 py-1.5 text-[11px] uppercase tracking-wider text-slate-400">Findings</div>';
+                d.findings.forEach(function (f) {
+                  html += '<a href="/findings" data-code="' + f.finding_code + '" class="flex items-center justify-between px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700"><span class="font-medium text-sm">' + f.finding_code + '</span><span class="text-xs text-slate-400 truncate max-w-[180px]">' + f.plugin_name + '</span></a>';
+                });
+              }
+              if (!html) html = '<div class="px-4 py-3 text-sm text-slate-400">No results found</div>';
+              html = '<div class="py-1">' + html + '</div>';
+              res.innerHTML = html;
+              res.classList.remove('hidden');
+            });
+        }, 300);
+      });
+      document.addEventListener('click', function (e) {
+        if (!res.contains(e.target) && e.target !== box) { res.classList.add('hidden'); }
+      });
+      res.addEventListener('click', function (e) {
+        var link = e.target.closest('a');
+        if (link) {
+          localStorage.setItem('assurance-qs', link.dataset.ip || link.dataset.code || '');
+        }
+      });
+    })();
+    // ---- Header scope filter ----
+    (function () {
+      var sel = document.getElementById('headerScope');
+      var saved = localStorage.getItem('assurance-scope') || '';
+      if (sel) sel.value = saved;
+      sel.addEventListener('change', function () {
+        localStorage.setItem('assurance-scope', sel.value);
+        window.__scope = sel.value;
+        document.dispatchEvent(new Event('scopechange'));
+      });
+      window.__scope = saved;
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Settings · SLA Policy · Assurance Platform{% endblock %}
+{% block content %}
+
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-bold">SLA Policy Rules</h1>
+    <p class="text-sm text-slate-400 mt-0.5">Firewall-style — rules are evaluated top-to-bottom, <b class="text-blue-400">first match wins</b>.</p>
+  </div>
+  <div class="flex gap-2">
+    <button onclick="recalc()" class="text-sm border border-slate-300 dark:border-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">Recalculate</button>
+    <button onclick="openAddRule()" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow">+ Add Rule</button>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+  <!-- ======================= RULES TABLE ======================= -->
+  <div class="xl:col-span-2 overflow-x-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 dark:bg-slate-800/50 text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-700">
+        <tr>
+          <th class="py-3 pl-4">#</th><th class="py-3 px-2">On</th>
+          <th class="py-3 px-2">Source</th><th class="py-3 px-2">Severity</th><th class="py-3 px-2">Scope</th>
+          <th class="py-3 px-2">Type</th><th class="py-3 px-2">Env</th>
+          <th class="py-3 px-2 text-right">SLA Days</th><th class="py-3 px-2 text-right">Approach%</th><th class="py-3 px-2 text-right">Retest%</th>
+          <th class="py-3 px-3 text-center">Order</th>
+        </tr>
+      </thead>
+      <tbody id="rulesBody"></tbody>
+    </table>
+    <div id="rulesEmpty" class="hidden py-10 text-center text-slate-400 text-sm">No SLA rules defined.</div>
+  </div>
+
+  <!-- ======================= RIGHT COLUMN ======================= -->
+  <div class="space-y-6">
+    <!-- Rule Simulator -->
+    <div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+      <h3 class="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-4">Rule Simulator</h3>
+      <p class="text-xs text-slate-400 mb-4">Pick a scenario and see which rule applies first (and the resulting due date).</p>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-[11px] uppercase text-slate-400 mb-1">Source</label>
+          <select id="simSource" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+            <option>VA</option><option>CIS</option><option>Any</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase text-slate-400 mb-1">Severity</label>
+          <select id="simSeverity" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+            <option>Critical</option><option>High</option><option>Medium</option><option>Low</option><option>Info</option><option>Any</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase text-slate-400 mb-1">Asset Scope</label>
+          <select id="simScope" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+            <option>Crown Jewel</option><option>PCI</option><option>Published</option><option>Infrastructure</option><option>Any</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase text-slate-400 mb-1">Asset Type</label>
+          <select id="simType" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+            <option>Server</option><option>Firewall</option><option>Database</option><option>Router</option><option>Any</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase text-slate-400 mb-1">Environment</label>
+          <select id="simEnv" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+            <option>Production</option><option>Test</option><option>DR</option><option>Any</option>
+          </select>
+        </div>
+        <button onclick="simulate()" class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition">Simulate Match</button>
+      </div>
+      <div id="simResult" class="hidden mt-4 rounded-xl border p-4 text-sm"></div>
+    </div>
+
+    <!-- Policy Change Log -->
+    <div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-sm uppercase tracking-wide text-slate-400">Policy Change Log</h3>
+        <button onclick="loadLog()" class="text-xs text-blue-500 hover:underline">Refresh</button>
+      </div>
+      <div id="logList" class="space-y-2 max-h-64 overflow-y-auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Add rule modal -->
+<div id="ruleModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+  <div class="absolute inset-0 bg-black/60" onclick="closeRuleModal()"></div>
+  <div class="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 w-full max-w-lg shadow-2xl" id="ruleModalBody"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  var rules = [];
+  function sel(id, opts) { return '<select id="' + id + '" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">' + opts.map(function (o) { return '<option>' + o + '</option>'; }).join('') + '</select>'; }
+  function opt(v) { return '<option value="' + v + '">' + v + '</option>'; }
+
+  function loadRules() {
+    api('/api/sla-rules').then(function (d) {
+      rules = d.rules;
+      var tb = document.getElementById('rulesBody');
+      document.getElementById('rulesEmpty').classList.toggle('hidden', rules.length > 0);
+      tb.innerHTML = rules.map(function (r) {
+        var chip = function (v, cls) { return v === 'Any' ? '<span class="text-slate-500">Any</span>' : '<span class="inline-block px-1.5 py-0.5 rounded text-[11px] font-semibold border ' + cls + '">' + v + '</span>'; };
+        return '<tr class="border-b border-slate-100 dark:border-slate-800/60 ' + (r.is_active ? '' : 'opacity-45') + '">' +
+          '<td class="py-3 pl-4 font-mono font-bold text-slate-400">' + r.priority_order + '</td>' +
+          '<td class="py-3 px-2"><button onclick="toggleRule(' + r.id + ')" class="relative w-10 h-5 rounded-full transition ' + (r.is_active ? 'bg-emerald-500' : 'bg-slate-600') + '"><span class="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ' + (r.is_active ? 'left-5' : 'left-0.5') + '"></span></button></td>' +
+          '<td class="py-3 px-2">' + chip(r.source, 'bg-blue-500/10 text-blue-400 border-blue-500/30') + '</td>' +
+          '<td class="py-3 px-2">' + chip(r.severity, { 'Critical': 'bg-red-500/10 text-red-500 border-red-500/30', 'High': 'bg-orange-500/10 text-orange-500 border-orange-500/30', 'Medium': 'bg-amber-400/10 text-amber-500 border-amber-400/30', 'Low': 'bg-sky-400/10 text-sky-500 border-sky-400/30' }[r.severity] || 'bg-slate-500/10 text-slate-400 border-slate-500/30') + '</td>' +
+          '<td class="py-3 px-2">' + chip(r.asset_scope, 'bg-purple-500/10 text-purple-400 border-purple-500/30') + '</td>' +
+          '<td class="py-3 px-2">' + chip(r.asset_type, 'bg-slate-500/10 text-slate-400 border-slate-500/30') + '</td>' +
+          '<td class="py-3 px-2">' + chip(r.environment, 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30') + '</td>' +
+          '<td class="py-3 px-2 text-right font-bold">' + r.sla_days + '</td>' +
+          '<td class="py-3 px-2 text-right">' + r.approaching_pct + '%</td>' +
+          '<td class="py-3 px-2 text-right">' + r.retest_pct + '%</td>' +
+          '<td class="py-3 px-3"><div class="flex justify-center gap-1">' +
+          '<button onclick="moveRule(' + r.id + ',\'up\')" class="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" title="Move up"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg></button>' +
+          '<button onclick="moveRule(' + r.id + ',\'down\')" class="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" title="Move down"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></button>' +
+          '</div></td></tr>';
+      }).join('');
+    });
+  }
+  function toggleRule(id) {
+    api('/api/sla-rules/' + id + '/toggle', { method: 'POST', body: '{}' }).then(function () { toast('Rule toggled — SLAs recalculated', true); loadRules(); }).catch(function (e) { toast(e.message, false); });
+  }
+  function moveRule(id, dir) {
+    api('/api/sla-rules/' + id + '/move', { method: 'POST', body: JSON.stringify({ direction: dir }) })
+      .then(function () { toast('Rule reordered — SLAs recalculated', true); loadRules(); }).catch(function (e) { toast(e.message, false); });
+  }
+  function recalc() {
+    api('/api/sla-rules/recalculate', { method: 'POST' }).then(function (d) { toast('Recalculated ' + d.recalculated + ' findings', true); }).catch(function (e) { toast(e.message, false); });
+  }
+  window.recalc = recalc;
+
+  function openAddRule() {
+    document.getElementById('ruleModalBody').innerHTML =
+      '<div class="flex justify-between items-start"><h3 class="font-bold text-lg">Add SLA Rule</h3><button class="text-slate-400 hover:text-white" onclick="closeRuleModal()">✕</button></div>' +
+      '<form id="addRuleForm" class="space-y-3 mt-4">' +
+      '<div class="grid grid-cols-3 gap-3">' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Source</label>' + sel('rSource', ['VA', 'CIS', 'Any']) + '</div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Severity</label>' + sel('rSeverity', ['Critical', 'High', 'Medium', 'Low', 'Info', 'Any']) + '</div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Asset Scope</label>' + sel('rScope', ['Crown Jewel', 'PCI', 'Published', 'Infrastructure', 'Any']) + '</div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Asset Type</label>' + sel('rType', ['Server', 'Firewall', 'Database', 'Router', 'Any']) + '</div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Environment</label>' + sel('rEnv', ['Production', 'Test', 'DR', 'Any']) + '</div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">SLA Days</label><input id="rDays" type="number" min="1" value="30" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none"></div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Approach %</label><input id="rAppr" type="number" min="1" max="99" value="70" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none"></div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Retest %</label><input id="rRet" type="number" min="1" max="99" value="80" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none"></div>' +
+      '</div><button class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold">Create Rule</button></form>';
+    document.getElementById('ruleModal').classList.remove('hidden');
+    document.getElementById('ruleModal').classList.add('flex');
+    document.getElementById('addRuleForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      api('/api/sla-rules', { method: 'POST', body: JSON.stringify({
+        source: document.getElementById('rSource').value, severity: document.getElementById('rSeverity').value,
+        asset_scope: document.getElementById('rScope').value, asset_type: document.getElementById('rType').value,
+        environment: document.getElementById('rEnv').value, sla_days: +document.getElementById('rDays').value,
+        approaching_pct: +document.getElementById('rAppr').value, retest_pct: +document.getElementById('rRet').value,
+      }) }).then(function () { toast('Rule created — SLAs recalculated', true); closeRuleModal(); loadRules(); })
+        .catch(function (err) { toast(err.message, false); });
+    });
+  }
+  function closeRuleModal() {
+    document.getElementById('ruleModal').classList.add('hidden');
+    document.getElementById('ruleModal').classList.remove('flex');
+  }
+  window.openAddRule = openAddRule; window.closeRuleModal = closeRuleModal;
+
+  function simulate() {
+    var payload = {
+      source: document.getElementById('simSource').value,
+      severity: document.getElementById('simSeverity').value,
+      asset_scope: document.getElementById('simScope').value,
+      asset_type: document.getElementById('simType').value,
+      environment: document.getElementById('simEnv').value,
+    };
+    api('/api/sla-rules/simulate', { method: 'POST', body: JSON.stringify(payload) }).then(function (d) {
+      var box = document.getElementById('simResult');
+      box.classList.remove('hidden');
+      if (d.matched) {
+        var r = d.rule;
+        box.className = 'mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-sm';
+        box.innerHTML = '<div class="text-emerald-500 font-bold mb-1">Rule #' + r.priority_order + ' applies first</div>' +
+          '<div class="text-xs space-y-1">' +
+          '<div>Source: <b>' + r.source + '</b> · Severity: <b>' + r.severity + '</b> · Scope: <b>' + r.asset_scope + '</b> · Env: <b>' + r.environment + '</b></div>' +
+          '<div>SLA target: <b>' + r.sla_days + ' days</b> · Approaching at ' + r.approaching_pct + '% · Retest at ' + r.retest_pct + '%</div>' +
+          '<div class="text-slate-400">' + d.note + '</div></div>';
+      } else {
+        box.className = 'mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-400';
+        box.innerHTML = '<b>No match.</b><div class="text-xs mt-1">' + d.note + '</div>';
+      }
+    }).catch(function (e) { toast(e.message, false); });
+  }
+
+  function loadLog() {
+    api('/api/sla-rules/log').then(function (d) {
+      document.getElementById('logList').innerHTML = d.logs.length ? d.logs.map(function (l) {
+        return '<div class="rounded-lg bg-slate-50 dark:bg-slate-800/50 px-3 py-2"><div class="text-xs">' + l.action + '</div>' +
+          '<div class="text-[10px] text-slate-400 mt-0.5">' + l.user + ' · ' + new Date(l.created_at).toLocaleString() + '</div></div>';
+      }).join('') : '<p class="text-xs text-slate-400">No policy changes recorded.</p>';
+    });
+  }
+  loadRules(); loadLog();
+</script>
+{% endblock %}

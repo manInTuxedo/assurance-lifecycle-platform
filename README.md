@@ -1,196 +1,150 @@
 # Assurance Finding Lifecycle & SLA Management Platform
 
-A production-ready security assurance platform for the Security Assurance team:
+A full-stack platform for ingesting vulnerability scans, correlating findings across
+scans (reappearance tracking), and enforcing firewall-style rule-based SLA policies —
+built for Banque Misr.
 
-- **Ingest** vulnerability scan reports (VA Scans, CIS Benchmarks, Configuration Reviews) from JSON/XML files (Nessus `.nessus`, OpenVAS, custom JSON exports).
-- **Correlate** findings by `CVE + PluginID + Asset + Port` — re-scanning an asset refreshes `last_seen` instead of creating duplicates; closed findings that reappear are re-opened and flagged.
-- **Enforce dynamic SLA** — remediation deadlines come from a severity × asset-classification matrix (DB-backed, admin-editable), anchored to the original first-detection date.
-- **Track lifecycle** — `Open → In Progress → Pending Verification → Pending Retest → Closed` (+ `Risk Accepted`), with strict transition validation and a retest workflow that preserves finding age.
-- **Manage risk exceptions** — link a `risk_id` (e.g. `RSK-2025-0142`) to put a finding "Under Exception" and pause its breach clock.
-- **Alert** via a simulated webhook/email outbox when Critical findings are created, statuses change, reappear, or SLA breaches.
-- **Analyze** on an 8-screen dark operations dashboard with Chart.js analytics, search, filters, and severity sorting.
+## Tech stack
 
-## Tech Stack
+| Layer      | Technology                                                     |
+|------------|----------------------------------------------------------------|
+| Backend    | Python 3.10+, FastAPI, Uvicorn                                 |
+| Database   | SQLite + SQLAlchemy ORM (`data/assurance.db`)                  |
+| Parsing    | Pandas + OpenPyXL (.xlsx) / CSV                                |
+| Auth/RBAC  | JWT (python-jose) + bcrypt with `admin` / `read_write` / `read_only` roles |
+| Frontend   | Jinja2 + TailwindCSS (CDN) + Vanilla JS + Chart.js (CDN)       |
 
-| Layer     | Technology                                          |
-| --------- | --------------------------------------------------- |
-| Backend   | Python 3.10+ · FastAPI (auto Swagger at `/docs`)     |
-| Database  | SQLite via SQLAlchemy 2.x ORM (zero config)          |
-| Frontend  | HTML5 + TailwindCSS (CDN) + Chart.js (CDN) + vanilla JS |
-| Parsers   | Built-in JSON/XML engines for Nessus/OpenVAS/CIS     |
-
-## Quickstart (Windows / macOS / Linux)
+## Quick start
 
 ```bash
 cd assurance_platform
-
-# 1. Create a virtual environment
-python -m venv .venv
-.venv\Scripts\activate          # Windows PowerShell
-# source .venv/bin/activate     # macOS / Linux
-
-# 2. Install dependencies
+python -m venv venv
+# Windows: venv\Scripts\activate   |  macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
-
-# 3. Run the API
 uvicorn app.main:app --reload --port 8000
 ```
 
-Open:
+Open http://localhost:8000 — the platform seeds itself on first boot with the
+default admin account (`admin` / `admin`) and the default SLA policy rules.
+Findings and assets are intentionally left empty so they come entirely from
+your uploaded scan / inventory reports.
 
-- **Dashboard:** http://127.0.0.1:8000
-- **Swagger/OpenAPI docs:** http://127.0.0.1:8000/docs
-- **Health check:** http://127.0.0.1:8000/api/v1/health
-
-On first boot the platform seeds `sample_data/mock_scan.json` (13 unique
-findings, including a duplicate that demonstrates correlation/dedup), builds
-the asset registry with auto-classification, and loads the 16-rule SLA matrix.
-
-## Test Ingestion Right Away
+Run the seeder manually if you ever need to re-seed an empty DB:
 
 ```bash
-curl -s -F "file=@sample_data/mock_scan.json" http://127.0.0.1:8000/api/v1/upload
+python -m sample_data.seed_data
 ```
 
-Expected response (first run): `created: 13, updated: 1, total: 14` — the
-duplicate Log4Shell entry on `web-prod-01.corp.local` is refreshed, not duplicated.
+## VA Scan import format
 
-## Correlation & Deduplication
+The parser accepts the classic VA export columns (matches
+`VA_C1_2026-03-16_R1_HQ-App-Servers-A.xlsx`):
 
-- Each finding gets a `correlation_signature = CVE + PluginID + Asset + Port`.
-- When neither CVE nor plugin ID is present, the normalized title fills the
-  plugin slot (keeps CIS baseline re-scans correlating).
-- On upload every signature is matched against the registry:
-  - **Match** → `last_seen` refreshed, `severity` drift updated; no duplicate row.
-  - **Closed / Risk Accepted finding re-detected** → status reverts to `Open`,
-    `reappeared=True`, `reappeared_count` incremented, `last_reappeared_at` set,
-    and a `reappeared` alert fires.
-  - **Pending Retest finding still present** → `retest_failed()`, stays open,
-    `retest_failed_count` incremented. `original_created_at` is NEVER reset.
-  - **Pending Retest finding absent from a scan covering its asset** →
-    `retest_passed()`, finding closed, `retest_passed_at` recorded.
+| Column                            | Mapped to                  |
+|-----------------------------------|----------------------------|
+| `Plugin Name`                     | `plugin_name`              |
+| `Severity`                        | `severity`                 |
+| `IP Address`                      | `ip_address`               |
+| `Protocol` / `Port`               | `protocol` / `port`        |
+| `CVE`                             | `cve`                      |
+| `First Discovered` / `Last Observed` | `first_discovered` / `last_observed` |
+| `Description`                     | `description`              |
+| `Steps to Remediate`              | `remediation_steps`        |
+| `Plugin Output`                   | `plugin_output`            |
+| `Vulnerability Priority Rating`   | `vpr_score`                |
 
-## SLA Policy (Dynamic Matrix)
+Dates are parsed from Excel serials, timestamps or strings and are always
+normalized to naive UTC, so offset-aware CSV values (e.g. `2026-03-16 07:45:12 +0000`
+or an ISO `+03:00` suffix) never crash the SLA math.
 
-SLA days are stored per `severity × asset_classification` in the
-`sla_configurations` table (admin-editable in the Administration screen, or
-`PATCH /api/v1/sla/config`). Defaults:
+If the scan export also carries asset columns, they are picked up automatically
+and used to create or update the inventory: `Hostname`/`Asset Name`, `Asset Type`/`Type`,
+`Scope`, `Environment`, `Site`, `Owner Team`, `Asset Code`, `Asset Status`.
+Rows without asset info (and IPs not already in inventory) attach to the fallback
+**Default Asset (AST-0000)** and a warning banner is shown.
 
-| Severity \ Classification | Critical | High | Medium | Low |
-| ------------------------- | -------- | ---- | ------ | --- |
-| **Critical**              | 7        | 10   | 14     | 14  |
-| **High**                  | 14       | 14   | 21     | 21  |
-| **Medium**                | 30       | 30   | 45     | 45  |
-| **Low**                   | 60       | 60   | 90     | 120 |
+Upload via **Findings → Upload Report** or **Audit Files → Upload Report**
+(VA Scan or Asset Inventory).
 
-- Assets are auto-classified from hostname keywords (`dc/db/prod` → Critical,
-  `web/app/gw` → High, `file/build/dev` → Medium, else Low); overridable on the
-  Assets screen.
-- `due_date = original_created_at + sla_days` — retests, reappearances and
-  matrix edits shift the deadline but never reset finding age.
-- Status is computed dynamically: `On Track` / `Approaching` / `Breached` /
-  `Under Exception` / `Resolved`.
-- A finding whose SLA is `Approaching`/`Breached` **and** whose last scan is
-  stale (no `last_seen` in the last 7 days) is moved to `Pending Retest` by
-  `refresh_sla_for` (runs on every upload/status change/`sla/refresh`).
-- Changing a matrix cell via the admin UI triggers `recompute_all_slas()`.
+To start a fully clean import, log in as `admin`, open **Audit Files → Danger Zone**
+and delete all findings (or findings + assets). Users and SLA rules are kept.
 
-## Retest & Validation Workflow
+## Correlation engine
 
-1. Finding enters `Pending Retest` automatically when its SLA is at risk and
-   the scan data is stale.
-2. Analyst rescans the asset and uploads the new report:
-   - signature still present → `retest_failed` (status back to `Open`, age kept);
-   - signature absent on a covered asset → `retest_passed` (`Closed`).
-3. Manual `Pending Verification` status is also supported for out-of-band
-   evidence; the Retest & Validation screen shows the pending queue and the
-   retest history.
+* Assets are looked up by **IP address**. Unmapped IPs attach to the fallback
+  **Default Asset (AST-0000)** and a warning banner is shown.
+* Correlation key: `(IP Address + Plugin Name + Port + Protocol)`.
+  * Open finding re-seen → only `last_observed` is refreshed.
+  * Closed finding re-seen → reopened as `Open`, `is_reappeared=True`,
+    `reappeared_count += 1`; `first_discovered` / SLA age is **preserved**.
+  * New finding → created with `original_created_at = First Discovered`.
+* A finding history + audit file record is created for every upload.
 
-## Risk Exceptions
+## SLA engine
 
-- `PATCH /api/v1/findings/{id}/exception` with `{risk_id, reason, granted_by}`
-  puts the finding "Under Exception" — the breach flag is cleared while active.
-- `DELETE /api/v1/findings/{id}/exception` lifts it and immediately re-evaluates
-  the SLA state (breach returns if still past due).
-- The Exceptions screen lists active exceptions with the linked risk ticket.
+Rules are evaluated **top-to-bottom, first match wins** (firewall style).
+Match fields: `Source`, `Severity`, `Asset Scope`, `Asset Type`, `Environment`
+(where `Any` matches anything). On match:
 
-## API Reference
+```
+due_date = original_created_at + sla_days
+SLA status = Under Exception   if active exception exists
+           else SLA Exceeded   if now > due_date and status != Closed
+           else Approaching    if elapsed / sla_days >= approaching_pct / 100
+           else Within SLA
+```
 
-| Method | Endpoint                         | Description |
-| ------ | -------------------------------- | ----------- |
-| GET    | `/`                              | Dashboard UI (Jinja2 template) |
-| POST   | `/api/v1/upload`                 | Ingest JSON/XML scan report (multipart `file`) |
-| GET    | `/api/v1/findings`               | Paginated findings — `search`, `status`, `severity`, `source`, `reappeared`, `sort`, `page`, `page_size` |
-| GET    | `/api/v1/findings/{id}`          | Fetch one finding |
-| PATCH  | `/api/v1/findings/{id}`          | Enrich (owner/notes/title) and/or transition `{"status": "In Progress"}` |
-| POST   | `/api/v1/findings/{id}/exception`| Link a risk exception `{risk_id, reason, granted_by}` |
-| DELETE | `/api/v1/findings/{id}/exception`| Lift the risk exception |
-| GET    | `/api/v1/stats`                  | Dashboard aggregates (severity, status, SLA compliance) |
-| GET    | `/api/v1/assets`                 | Asset registry with classification and finding counts |
-| POST   | `/api/v1/assets`                 | Register/classify an asset |
-| PATCH  | `/api/v1/assets/{id}`            | Update classification/owner (recomputes SLAs) |
-| GET    | `/api/v1/sla/config`             | Current SLA matrix |
-| PATCH  | `/api/v1/sla/config`             | Bulk-update matrix cells `{updates: [{severity, asset_classification, sla_days}]}` |
-| POST   | `/api/v1/sla/refresh`            | Re-evaluate SLA flags + pending-retest moves |
-| POST   | `/api/v1/sla/recompute`          | Recompute all due dates from the matrix (anchored to `original_created_at`) |
-| GET    | `/api/v1/retests`                | Pending retest queue + retest history |
-| POST   | `/api/v1/retests/evaluate`       | Force re-evaluation of the queue |
-| GET    | `/api/v1/exceptions`             | Active risk exceptions |
-| GET    | `/api/v1/reports`                | Executive summary (close time, aging, uploads, reappearances) |
-| GET    | `/api/v1/uploads`                | Scan upload history with per-upload correlation counters |
-| GET    | `/api/v1/notifications`          | Simulated webhook/email outbox feed |
-| POST   | `/api/v1/notifications/test`     | Manually dispatch a test alert |
-| GET    | `/api/v1/health`                 | Liveness probe |
+Closed findings are set to `sla_status = Closed`. Once the `retest_pct`
+threshold is crossed, open findings are automatically flagged `retest_status = Pending`.
+SLAs recalculate automatically on new upload, rule create/toggle/reorder, or via
+**Settings → Recalculate**.
 
-Try every endpoint interactively in Swagger at `/docs`.
+## Roles
 
-## Supported Scan Formats
+| Capability             | admin | read_write | read_only |
+|------------------------|:-----:|:----------:|:---------:|
+| View dashboards/findings/reports | ✔ | ✔ | ✔ |
+| Upload scans / inventory         | ✔ | ✔ | — |
+| Assign owner / retest / close    | ✔ | ✔ | — |
+| Link risk IDs, add exceptions    | ✔ | ✔ | — |
+| SLA policy rules & reordering    | ✔ | — | — |
+| User management                 | ✔ | — | — |
 
-- **Nessus v2 XML** (`.nessus`): `ReportHost`/`ReportItem` with `plugin_name`,
-  `pluginID`, `severity` (0–4), `cvss_base_score`, `<cve>`, `port`.
-- **OpenVAS / Greenbone XML**: `result` elements with `name`, `host`, `threat`,
-  `severity` (0–10), nested `nvt` with `cve`/`cvss_base`.
-- **JSON**: flat lists, `{"findings": [...]}`, `{"hosts": [...]}` — key-tolerant
-  (`title`/`name`/`plugin_name`, `host`/`asset`/`ip`, `plugin_id`/`pluginid`).
-- Severity strings are normalized (`Critical`/`HIGH`/`4`/`9.8` → canonical levels).
-
-## UI Screens
-
-Dashboard · Findings (with REAPPEARED tags) · SLA Tracking · Retest & Validation ·
-Exceptions · Assets · Reports · Administration (SLA matrix editor).
-
-## Project Structure
+## Project layout
 
 ```
 assurance_platform/
 ├── app/
-│   ├── __init__.py          # package metadata
-│   ├── main.py              # FastAPI app, routes, correlation engine, seeding
-│   ├── database.py          # SQLAlchemy engine + session
-│   ├── models.py            # Finding, Asset, SLAConfiguration, ScanUpload, Notification
-│   ├── schemas.py           # Pydantic v2 API schemas
-│   ├── parsers.py           # JSON/XML scan report parsing + correlation signatures
-│   ├── sla_engine.py        # SLA matrix, retest/lifecycle rules, alert dispatch
-│   └── templates/
-│       └── index.html       # 8-screen dark operations dashboard (Tailwind + Chart.js)
+│   ├── __init__.py
+│   ├── main.py            # FastAPI app, UI routes, APIs, ingestion
+│   ├── database.py        # SQLAlchemy engine & session
+│   ├── models.py          # User, Asset, Finding, SLARule, ExceptionRecord, AuditFile…
+│   ├── schemas.py         # Pydantic schemas
+│   ├── auth.py            # bcrypt + JWT + RBAC dependencies
+│   ├── parsers.py         # VA-scan & inventory Excel/CSV parsing
+│   ├── sla_engine.py      # first-match-wins rule engine & SLA calculator
+│   └── templates/         # base, login, dashboard, findings, sla_tracking,
+│                          # assets, settings, retests, exceptions, audit, reports
 ├── sample_data/
-│   └── mock_scan.json       # sample Nessus-style report for testing
-├── data/                    # created at runtime (SQLite DB lives here)
+│   └── seed_data.py       # seeds admin, default SLA rules, sample assets/findings
+├── data/                  # assurance.db (created at runtime)
 ├── requirements.txt
 └── README.md
 ```
 
-## Simulated Alerting
+## Security notes
 
-Alerts are persisted in the `notifications` table and rendered in the
-dashboard; they are also logged to stdout as `[MOCK WEBHOOK]` / `[MOCK EMAIL]`.
-To wire real integrations, replace `dispatch_notification()` in
-`app/sla_engine.py` with an HTTP POST to your ticketing API or SMTP call —
-the signature already carries event type, level, subject, message and context.
+* JWT is stored in an HttpOnly cookie; bcrypt hashes passwords.
+* Change `ASSURANCE_SECRET_KEY` via environment in production.
+* `read_only` users cannot mutate data; all mutation routes enforce RBAC.
 
-## Development Notes
+## Tests
 
-- SQLite file lives at `data/assurance.db`. Delete it to reset the demo dataset.
-- Dashboard requires internet access for the TailwindCSS and Chart.js CDNs.
-- UI auto-refreshes every 60s (toggleable) and reflects SLA breaches live.
-- `original_created_at` is immutable — it drives all SLA age calculations.
+`smoke_test.py` runs an end-to-end suite (auth/RBAC, dashboard APIs, correlation,
+reappearance logic, SLA engine, uploads, exports) and `page_render_test.py`
+verifies every page renders for each role. Both use FastAPI's TestClient:
+
+```bash
+.\venv\Scripts\python.exe smoke_test.py        # 40 assertions
+.\venv\Scripts\python.exe page_render_test.py  # 10 page renders
+```
