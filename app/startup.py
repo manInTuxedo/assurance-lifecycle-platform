@@ -23,7 +23,7 @@ def load_asset_inventory(db: Session, workspace_root: Path) -> dict:
     inventory_path = workspace_root / "Asset_Inventory.xlsx"
     
     if not inventory_path.exists():
-        print(f"⚠️  Asset inventory not found at {inventory_path}")
+        print(f"Asset inventory not found at {inventory_path}")
         return {"created": 0, "updated": 0, "skipped": 0, "error": "File not found"}
     
     try:
@@ -62,8 +62,20 @@ def load_asset_inventory(db: Session, workspace_root: Path) -> dict:
                 updated += 1
             else:
                 # Create new asset
-                # Generate asset code if not provided
+                # Get asset code from row or auto-generate
                 asset_code = row.get("asset_code") or None
+                
+                if asset_code:
+                    # Check if this asset_code is already taken by a different IP
+                    code_exists = db.query(models.Asset).filter(
+                        models.Asset.asset_code == asset_code,
+                        models.Asset.ip_address != ip
+                    ).first()
+                    
+                    if code_exists:
+                        # Asset code taken by different IP, auto-generate new code
+                        asset_code = None
+                
                 if not asset_code:
                     # Auto-generate asset code
                     max_code = db.query(models.Asset.asset_code).all()
@@ -77,23 +89,18 @@ def load_asset_inventory(db: Session, workspace_root: Path) -> dict:
                                 pass
                     asset_code = f"AST-{max_num + 1:04d}"
                 
-                # Check if asset_code already exists
-                if db.query(models.Asset).filter(models.Asset.asset_code == asset_code).first():
-                    # Skip duplicate asset_code
-                    skipped += 1
-                    continue
-                
                 asset = models.Asset(
                     asset_code=asset_code,
                     ip_address=ip,
                     **fields
                 )
                 db.add(asset)
+                db.flush()  # Flush to catch any constraint errors early
                 created += 1
         
         db.commit()
         
-        print(f"✅ Asset inventory loaded: {created} created, {updated} updated, {skipped} skipped")
+        print(f"Asset inventory loaded: {created} created, {updated} updated, {skipped} skipped")
         
         return {
             "created": created,
@@ -103,6 +110,6 @@ def load_asset_inventory(db: Session, workspace_root: Path) -> dict:
         }
         
     except Exception as e:
-        print(f"❌ Failed to load asset inventory: {e}")
+        print(f"Failed to load asset inventory: {e}")
         db.rollback()
         return {"created": 0, "updated": 0, "skipped": 0, "error": str(e)}

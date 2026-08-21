@@ -1,22 +1,21 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Assurance Platform{% endblock %}</title>
   <script>
+    // Theme initialization - MUST run before any rendering
+    (function () {
+      var theme = localStorage.getItem('assurance-theme') || 'dark';
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+    })();
+  </script>
+  <script>
     tailwind = { config: { darkMode: 'class' } };
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <script>
-    (function () {
-      var th = localStorage.getItem('assurance-theme');
-      var root = document.documentElement;
-      if (th === 'light') { root.classList.remove('dark'); } else { root.classList.add('dark'); }
-      window.__theme = th === 'light' ? 'light' : 'dark';
-    })();
-  </script>
   <style>
     html, body { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif; }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -150,7 +149,7 @@
         <!-- Profile -->
         <div class="flex items-center gap-3 pl-3 border-l border-slate-200 dark:border-slate-700 relative">
           <div class="text-right">
-            <div class="text-sm font-semibold">Alex Smith</div>
+            <div class="text-sm font-semibold">{{ current_user.username }}</div>
             <div class="text-[11px] text-slate-400">{{ current_user.role }}</div>
           </div>
           <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">

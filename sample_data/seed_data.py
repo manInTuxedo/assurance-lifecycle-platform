@@ -39,7 +39,7 @@ def seed_if_empty(db):
     created = {"user": 0, "rules": 0}
 
     if db.query(models.User).count() == 0:
-        db.add(models.User(username="admin", password_hash=hash_password("admin"), role="admin"))
+        db.add(models.User(username="Assurance Head", password_hash=hash_password("admin"), role="admin"))
         created["user"] = 1
 
     if db.query(models.SLARule).count() == 0:
