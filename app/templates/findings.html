@@ -5,10 +5,10 @@
 <div class="flex flex-wrap items-center justify-between gap-3">
   <div>
     <h1 class="text-2xl font-bold">Findings</h1>
-    <p class="text-sm text-slate-400 mt-0.5" id="findingsSub">…</p>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1" id="findingsSub">…</p>
   </div>
   <div class="flex items-center gap-2">
-    {% if current_user.role != 'read_only' %}
+    {% if can_write %}
     <button data-btn="upload" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow">Upload Report</button>
     {% endif %}
     <a href="/api/reports/export" class="text-sm border border-slate-300 dark:border-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">Export CSV</a>
@@ -16,34 +16,24 @@
 </div>
 
 <!-- ======================= FILTER BAR ======================= -->
-<div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+<div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
   <input id="fQ" placeholder="Search finding / CVE / IP"
          class="col-span-2 xl:col-span-2 text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
-  <select id="fSource" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
-    <option value="">Source: All</option><option>VA</option><option>CIS</option>
-  </select>
-  <select id="fSeverity" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
-    <option value="">Severity: All</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option><option>Info</option>
-  </select>
-  <select id="fScope" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
-    <option value="">Scope: All</option><option>Crown Jewel</option><option>PCI</option><option>Published</option><option>Infrastructure</option>
-  </select>
-  <select id="fEnv" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
-    <option value="">Env: All</option><option>Production</option><option>Test</option><option>DR</option>
-  </select>
-  <select id="fTeam" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
-    <option value="">Team: All</option><option>Server Team</option><option>Network Team</option><option>Database Team</option><option>Security Team</option><option>Middleware Team</option>
-  </select>
-  <select id="fSLA" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
-    <option value="">SLA: All</option><option>Within SLA</option><option>Approaching SLA</option><option>SLA Exceeded</option><option>Under Exception</option>
-  </select>
-  <select id="fRetest" class="text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
-    <option value="">Retest: All</option><option>Pending</option><option>Passed</option><option>Failed</option><option>None</option>
-  </select>
+  <select id="fSource" data-filter="sources" data-label="Source" class="flt"></select>
+  <select id="fSeverity" data-filter="severities" data-label="Severity" class="flt"></select>
+  <select id="fScope" data-filter="scopes" data-label="Scope" class="flt"></select>
+  <select id="fEnv" data-filter="environments" data-label="Env" class="flt"></select>
+  <select id="fSLA" data-filter="sla_statuses" data-label="SLA" class="flt"></select>
+  <select id="fStatus" data-filter="statuses" data-label="Status" class="flt"></select>
+  <select id="fRetest" data-filter="retests" data-label="Retest" class="flt"></select>
+  <div class="col-span-2 md:col-span-4 xl:col-span-8 flex items-center justify-between gap-3">
+    <span class="text-[11px] text-slate-400" id="filterHint">Showing open and closed findings — use the Status filter to narrow.</span>
+    <button id="fReset" class="text-[11px] text-blue-600 dark:text-blue-400 hover:underline">Reset filters</button>
+  </div>
 </div>
 
 <!-- ======================= ACTION BAR ======================= -->
-{% if current_user.role != 'read_only' %}
+{% if can_write %}
 <div class="flex flex-wrap items-center gap-2">
   <button data-bulk="owner" class="text-sm px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition" disabled>Assign Owner</button>
   <button data-bulk="retest" class="text-sm px-3 py-2 rounded-lg border border-amber-400/40 text-amber-400 hover:bg-amber-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition" disabled>Send to Retest</button>
@@ -54,12 +44,12 @@
 {% endif %}
 
 <!-- ======================= TABLE ======================= -->
-<div class="overflow-x-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+<div class="overflow-x-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
   <table class="w-full text-sm">
     <thead class="bg-slate-50 dark:bg-slate-800/50 text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-700">
       <tr>
-        {% if current_user.role != 'read_only' %}<th class="py-3 pl-4 w-8"><input type="checkbox" id="checkAll"></th>{% endif %}
-        <th class="py-3 px-3">Finding ID / Source</th>
+        {% if can_write %}<th class="py-3 pl-4 w-8"><input type="checkbox" id="checkAll"></th>{% endif %}
+        <th class="py-3 px-3">Finding ID</th>
         <th class="py-3 px-3">Finding Name</th>
         <th class="py-3 px-3">Severity</th>
         <th class="py-3 px-3">Asset</th>
@@ -74,6 +64,18 @@
     <tbody id="findingsBody"></tbody>
   </table>
   <div id="findingsEmpty" class="hidden py-10 text-center text-slate-400 text-sm">No findings match the current filters.</div>
+  <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 dark:border-slate-800 text-sm">
+    <div class="text-slate-500 dark:text-slate-400 text-[12px]" id="pageInfo">—</div>
+    <div class="flex items-center gap-2">
+      <label class="text-[12px] text-slate-500 dark:text-slate-400">Rows</label>
+      <select id="pageSize" class="text-[12px] rounded-lg px-2 py-1.5 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+        <option>25</option><option selected>50</option><option>100</option><option>200</option>
+      </select>
+      <button id="pagePrev" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800">Prev</button>
+      <span class="text-[12px] font-semibold" id="pageLabel">1 / 1</span>
+      <button id="pageNext" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800">Next</button>
+    </div>
+  </div>
 </div>
 
 <!-- Detail drawer -->
@@ -85,24 +87,43 @@
 <!-- ======================= MODALS ======================= -->
 <div id="modalWrap"></div>
 
-<div id="uploadModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+<div id="uploadModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
   <div class="absolute inset-0 bg-black/60" onclick="closeUpload()"></div>
-  <div class="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 w-full max-w-md shadow-2xl">
-    <h3 class="font-bold text-lg mb-4">Upload Scan / Inventory Report</h3>
-    <form id="uploadForm" class="space-y-4">
+  <div class="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 w-full max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto">
+    <div class="flex items-start justify-between">
       <div>
-        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Report Type</label>
-        <select name="source_type" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
-          <option value="va">VA Scan (.xlsx / .csv)</option>
-          <option value="assets">Asset Inventory (.xlsx / .csv)</option>
-        </select>
+        <h3 class="font-bold text-lg">Upload assessment reports</h3>
+        <p class="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">
+          VA, CIS, SAST, DAST or PT — the platform reads which one from the file itself.
+        </p>
       </div>
-      <div>
-        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">File</label>
-        <input type="file" name="file" accept=".xlsx,.csv" required
-               class="w-full text-sm rounded-lg bg-slate-100 dark:bg-slate-800 border border-transparent p-2">
+      <button class="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xl leading-none" onclick="closeUpload()">&times;</button>
+    </div>
+
+    <form id="uploadForm" class="space-y-4 mt-4">
+      <div class="flex gap-2">
+        <button type="button" id="pickFiles"
+                class="flex-1 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          Choose files
+        </button>
+        <button type="button" id="pickFolder"
+                class="flex-1 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          Choose a folder
+        </button>
       </div>
-      <button class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition">Upload & Correlate</button>
+      <input type="file" id="fileInput" name="files" accept=".xlsx,.xls,.csv" multiple class="hidden">
+      <input type="file" id="folderInput" webkitdirectory directory multiple class="hidden">
+
+      <div id="fileList" class="hidden rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 max-h-52 overflow-y-auto"></div>
+      <p id="fileHint" class="text-[12px] text-slate-500 dark:text-slate-400">
+        Pick as many as you like — a whole cycle, or the whole folder. Anything that is not a
+        spreadsheet is ignored, and the files are processed oldest first.
+      </p>
+
+      <button id="uploadBtn" disabled
+              class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition">
+        Upload &amp; correlate
+      </button>
     </form>
     <div id="uploadResult" class="hidden mt-4 text-sm"></div>
   </div>
@@ -112,7 +133,7 @@
 {% block scripts %}
 <script>
   var findings = [], selected = new Set();
-  var isWrite = {{ 'true' if current_user.role != 'read_only' else 'false' }};
+  var isWrite = {{ 'true' if can_write else 'false' }};
 
   // ---------- helpers ----------
   function sevBadge(s) {
@@ -125,19 +146,57 @@
     var map = { 'Within SLA': 'bg-emerald-500/15 text-emerald-500 border-emerald-500/40',
       'Approaching SLA': 'bg-amber-400/15 text-amber-500 border-amber-400/40',
       'SLA Exceeded': 'bg-red-500/15 text-red-500 border-red-500/40',
+      'Past Due': 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/40',
       'Under Exception': 'bg-purple-500/15 text-purple-400 border-purple-500/40',
       'Closed': 'bg-slate-400/15 text-slate-400 border-slate-400/40' };
     var chip = '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold border ' + (map[s] || map['Within SLA']) + '">' + s + '</span>';
     if (due) chip += '<div class="text-[11px] text-slate-400 mt-1">due ' + due.slice(0, 10) + '</div>';
     return chip;
   }
+  // The three application assessments behave differently everywhere the
+  // interface assumes a host and a port.
+  function isAppSec(f) { return ['SAST', 'DAST', 'PT'].indexOf(f.source) > -1; }
+
+  // Which assessment a finding came from changes how it should be read - a
+  // CIS control and a penetration test result are not the same kind of
+  // statement - so it is labelled beside the finding itself rather than left
+  // as small grey text under the code.
+  var SOURCE_TONE = {
+    VA:   'text-blue-600 dark:text-blue-400 border-blue-500/40 bg-blue-500/10',
+    CIS:  'text-rose-600 dark:text-rose-400 border-rose-500/40 bg-rose-500/10',
+    SAST: 'text-violet-600 dark:text-violet-400 border-violet-500/40 bg-violet-500/10',
+    DAST: 'text-cyan-600 dark:text-cyan-400 border-cyan-500/40 bg-cyan-500/10',
+    PT:   'text-amber-600 dark:text-amber-400 border-amber-500/40 bg-amber-500/10'
+  };
+  function sourceBadge(source) {
+    var code = source || 'VA';
+    var tone = SOURCE_TONE[code] || 'text-slate-500 border-slate-400/40 bg-slate-400/10';
+    return '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded border ' + tone +
+           ' whitespace-nowrap">' + esc(code) + '</span>';
+  }
+
+  function shortCve(cve) {
+    // A finding can carry a dozen CVEs; two plus a count keeps the row one line.
+    var list = String(cve).split(',').map(function (c) { return c.trim(); }).filter(Boolean);
+    if (list.length <= 2) return list.join(', ');
+    return list.slice(0, 2).join(', ') + ' +' + (list.length - 2) + ' more';
+  }
+  var SCOPE_STYLE = {
+    'Crown Jewel': 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
+    'PCI': 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30',
+    'Published': 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
+  };
   function scopeBadges(f) {
-    var codes = [];
     var a = f.asset;
     if (!a) return '<span class="text-[11px] text-slate-400">Unmapped</span>';
-    codes.push('<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 mr-1">' + a.scope + '</span>');
-    codes.push('<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/30 mr-1">' + a.environment + '</span>');
-    return codes.join('');
+    // Scope is one comma separated field, so it is rendered as one chip per value.
+    var chips = String(a.scope || '').split(',').map(function (v) { return v.trim(); })
+      .filter(Boolean).map(function (v) {
+        var cls = SCOPE_STYLE[v] || 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30';
+        return '<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold border mr-1 mb-1 ' + cls + '">' + v + '</span>';
+      });
+    chips.push('<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-500/10 text-slate-500 dark:text-slate-400 border border-slate-500/30 mr-1 mb-1">' + a.environment + '</span>');
+    return chips.join('');
   }
   function retestBadge(r) {
     if (!r) return '<span class="text-[11px] text-slate-500">—</span>';
@@ -145,20 +204,56 @@
     return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold border ' + cls + '">' + r + '</span>';
   }
 
+  // ---------- filters ----------
+  var FILTERS = null, page = 1, pageSize = 50, totalPages = 1;
+
+  function fillSelect(el, values, label) {
+    el.innerHTML = '<option value="">' + label + ': All</option>' +
+      values.map(function (v) { return '<option>' + v + '</option>'; }).join('');
+  }
+
+  function initFilters() {
+    return api('/api/filters').then(function (d) {
+      FILTERS = d;
+      d.retests = ['Pending', 'Passed', 'Failed', 'None'];
+      document.querySelectorAll('select.flt').forEach(function (el) {
+        fillSelect(el, d[el.dataset.filter] || [], el.dataset.label);
+      });
+      var url = new URLSearchParams(window.location.search);
+      [['q', 'fQ'], ['source', 'fSource'], ['severity', 'fSeverity'], ['scope', 'fScope'],
+       ['environment', 'fEnv'], ['sla_status', 'fSLA'], ['status', 'fStatus'],
+       ['retest', 'fRetest']].forEach(function (p) {
+        if (url.get(p[0])) document.getElementById(p[1]).value = url.get(p[0]);
+      });
+    });
+  }
+
   // ---------- load ----------
-  function loadFindings() {
+  function loadFindings(resetPage) {
+    if (resetPage !== false) page = 1;
     var params = new URLSearchParams();
     [['q', 'fQ'], ['source', 'fSource'], ['severity', 'fSeverity'], ['scope', 'fScope'],
-     ['environment', 'fEnv'], ['owner_team', 'fTeam'], ['sla_status', 'fSLA'], ['retest', 'fRetest']].forEach(function (p) {
+     ['environment', 'fEnv'], ['sla_status', 'fSLA'], ['status', 'fStatus'],
+     ['retest', 'fRetest']].forEach(function (p) {
       var v = document.getElementById(p[1]).value.trim();
       if (v) params.set(p[0], v);
     });
-    if (window.__scope && !params.get('scope')) params.set('scope', window.__scope);
-    fetch('/api/findings?' + params.toString()).then(function (r) { return r.json(); }).then(function (d) {
+    params.set('page', page);
+    params.set('page_size', pageSize);
+    api('/api/findings?' + params.toString()).then(function (d) {
       findings = d.findings;
       selected.clear();
-      document.getElementById('checkAll').checked = false;
-      document.getElementById('findingsSub').textContent = findings.length + ' findings';
+      var ca = document.getElementById('checkAll');
+      if (ca) ca.checked = false;
+      page = d.page; totalPages = d.pages;
+      document.getElementById('findingsSub').textContent =
+        d.total.toLocaleString() + ' findings match · showing ' + d.showing;
+      document.getElementById('pageInfo').textContent =
+        d.total ? ('Rows ' + (((d.page - 1) * d.page_size) + 1).toLocaleString() + '–' +
+          Math.min(d.page * d.page_size, d.total).toLocaleString() + ' of ' + d.total.toLocaleString()) : 'No rows';
+      document.getElementById('pageLabel').textContent = d.page + ' / ' + d.pages;
+      document.getElementById('pagePrev').disabled = d.page <= 1;
+      document.getElementById('pageNext').disabled = d.page >= d.pages;
       renderTable();
       updateBulk();
     }).catch(function (e) { toast(e.message, false); });
@@ -169,23 +264,26 @@
     document.getElementById('findingsEmpty').classList.toggle('hidden', findings.length > 0);
     tb.innerHTML = findings.map(function (f) {
       var name = f.plugin_name;
-      if (f.is_reappeared) name += ' <span class="text-[10px] font-bold text-red-400 border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 rounded ml-1">REAPPEARED</span>';
+      if (f.is_reappeared) name += ' <span class="text-[10px] font-bold text-rose-500 border border-rose-500/40 bg-rose-500/10 px-1.5 py-0.5 rounded ml-1">REAPPEARED</span>';
       var owner = f.owner || (f.asset ? f.asset.owner_team : '—');
+      var statusChip = f.status === 'Closed'
+        ? '<div class="text-[10px] mt-1 text-slate-400">' + (f.closure_label || 'Closed') + '</div>' : '';
       return '<tr class="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40">' +
         (isWrite ? '<td class="py-3 pl-4"><input type="checkbox" class="row-check" value="' + f.id + '" ' + (selected.has(f.id) ? 'checked' : '') + '></td>' : '') +
         '<td class="py-3 px-3"><div class="font-semibold text-blue-500 cursor-pointer" data-detail="' + f.id + '">' + f.finding_code + '</div>' +
-        '<div class="text-[11px] text-slate-400">' + (f.source || 'VA') + '</div></td>' +
-        '<td class="py-3 px-3 max-w-[260px]"><div class="truncate">' + name + '</div>' +
-        (f.cve ? '<span class="text-[11px] font-mono text-slate-400">' + f.cve + '</span>' : '') + '</td>' +
+        (f.compliance_result ? '<div class="text-[11px] text-slate-400">' + esc(f.compliance_result) + '</div>' : '') + '</td>' +
+        '<td class="py-3 px-3 max-w-[280px]"><div class="flex items-start gap-1.5">' +
+        sourceBadge(f.source) + '<div class="truncate flex-1">' + name + '</div></div>' +
+        (f.cve ? '<div class="text-[11px] font-mono text-slate-400 truncate">' + shortCve(f.cve) + '</div>' : '') + statusChip + '</td>' +
         '<td class="py-3 px-3">' + sevBadge(f.severity) + (f.vpr_score ? '<div class="text-[10px] text-slate-400 mt-1">VPR ' + f.vpr_score + '</div>' : '') + '</td>' +
         '<td class="py-3 px-3 text-xs">' + (f.asset ? '<div class="font-medium">' + f.asset.name + '</div><div class="text-slate-400">' + f.ip_address + '</div>' : f.ip_address) + '</td>' +
         '<td class="py-3 px-3">' + scopeBadges(f) + '</td>' +
         '<td class="py-3 px-3 text-xs font-semibold">' + f.age_days + 'd</td>' +
         '<td class="py-3 px-3" data-sla="' + f.sla_status + '">' + slaBadge(f.sla_status, f.due_date) + '</td>' +
         '<td class="py-3 px-3">' + retestBadge(f.retest_status) + '</td>' +
-        '<td class="py-3 px-3 text-xs">' + (f.exception_id ? '<a href="/exceptions" class="text-purple-400 hover:underline font-mono">' + f.exception_id + '</a>' : '<span class="text-slate-500">—</span>') +
-        '<br>' + (f.risk_id ? '<a href="/findings" class="text-sky-400 hover:underline font-mono">' + f.risk_id + '</a>' : '<span class="text-slate-500">—</span>') + '</td>' +
-        '<td class="py-3 px-3 text-xs">' + owner + '</td></tr>';
+        '<td class="py-3 px-3 text-xs">' + (f.exception_id ? '<a href="/exceptions" class="text-purple-500 hover:underline font-mono">' + f.exception_id + '</a>' : '<span class="text-slate-500">—</span>') +
+        '<br>' + (f.risk_id ? '<span class="text-sky-500 font-mono">' + f.risk_id + '</span>' : '<span class="text-slate-500">—</span>') + '</td>' +
+        '<td class="py-3 px-3 text-xs whitespace-nowrap">' + owner + '</td></tr>';
     }).join('');
     document.querySelectorAll('[data-detail]').forEach(function (el) {
       el.addEventListener('click', function () { openDetail(+el.dataset.detail); });
@@ -202,38 +300,96 @@
     var ca = document.getElementById('checkAll');
     if (ca && findings.length) ca.checked = selected.size === findings.length;
   }
-  document.getElementById('checkAll').addEventListener('change', function (e) {
+  var checkAllEl = document.getElementById('checkAll');
+  if (checkAllEl) checkAllEl.addEventListener('change', function (e) {
     selected.clear();
     if (e.target.checked) findings.forEach(function (f) { selected.add(f.id); });
     document.querySelectorAll('.row-check').forEach(function (cb) { cb.checked = e.target.checked; });
     updateBulk();
   });
 
-  // ---------- filters ----------
-  ['fQ', 'fSource', 'fSeverity', 'fScope', 'fEnv', 'fTeam', 'fSLA', 'fRetest'].forEach(function (id) {
-    document.getElementById(id).addEventListener('change', loadFindings);
+  // ---------- filter + pager wiring ----------
+  ['fSource', 'fSeverity', 'fScope', 'fEnv', 'fSLA', 'fStatus', 'fRetest'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', function () { loadFindings(); });
   });
-  document.getElementById('fQ').addEventListener('input', debounce(loadFindings, 350));
   function debounce(fn, ms) { var t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
-  document.addEventListener('scopechange', loadFindings);
+  document.getElementById('fQ').addEventListener('input', debounce(function () { loadFindings(); }, 350));
+  document.getElementById('fReset').addEventListener('click', function () {
+    document.getElementById('fQ').value = '';
+    document.querySelectorAll('select.flt').forEach(function (el) { el.value = ''; });
+    loadFindings();
+  });
+  document.getElementById('pageSize').addEventListener('change', function (e) {
+    pageSize = +e.target.value; loadFindings();
+  });
+  document.getElementById('pagePrev').addEventListener('click', function () {
+    if (page > 1) { page -= 1; loadFindings(false); }
+  });
+  document.getElementById('pageNext').addEventListener('click', function () {
+    if (page < totalPages) { page += 1; loadFindings(false); }
+  });
 
   // ---------- detail drawer ----------
   function openDetail(id) {
     api('/api/findings/' + id).then(function (d) {
       var f = d.finding;
+      var raw = d.raw;
       var html = '<div class="flex justify-between items-start"><div><h2 class="text-xl font-bold">' + f.finding_code + '</h2>' +
         '<div class="text-sm text-slate-400">' + f.plugin_name + '</div></div><button class="text-slate-400 hover:text-white" onclick="closeDetail()">✕</button></div>' +
-        '<div class="flex gap-2 mt-3">' + sevBadge(f.severity) + slaBadge(f.sla_status) + retestBadge(f.retest_status) + '</div>' +
+        '<div class="flex gap-2 mt-3 flex-wrap">' + sevBadge(f.severity) + slaBadge(f.sla_status) +
+        (f.retest_status ? retestBadge(f.retest_status) : '') +
+        '<span class="text-[11px] px-2 py-1 rounded-full border border-slate-300 dark:border-slate-700 text-slate-500">' + (f.source || '—') + '</span>' +
+        (f.compliance_result ? '<span class="text-[11px] px-2 py-1 rounded-full border border-slate-300 dark:border-slate-700 text-slate-500">' + f.compliance_result + '</span>' : '') +
+        '</div>' +
+        '<a href="/findings/' + f.id + '/record" class="inline-block mt-3 text-[12px] text-blue-600 dark:text-blue-400 hover:underline">Open the full record — every column of the report &rarr;</a>' +
         '<div class="grid grid-cols-2 gap-3 mt-5 text-sm">' +
-        '<div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3"><div class="text-[11px] uppercase text-slate-400">IP / Port</div><div class="font-semibold mt-1">' + f.ip_address + ':' + (f.port || '—') + '/' + (f.protocol || '—') + '</div></div>' +
+        // An application finding has no port or protocol and its address is
+        // not the point - where it lives inside the application is. The tile
+        // says whichever of the two the assessment actually reported.
+        (isAppSec(f)
+          ? '<div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3"><div class="text-[11px] uppercase text-slate-400">Application</div><div class="font-semibold mt-1 break-words">' + esc(f.application_name || '—') + '</div></div>'
+          : '<div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3"><div class="text-[11px] uppercase text-slate-400">IP / Port</div><div class="font-semibold mt-1">' + f.ip_address + ':' + (f.port || '—') + '/' + (f.protocol || '—') + '</div></div>') +
         '<div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3"><div class="text-[11px] uppercase text-slate-400">First / Last seen</div><div class="text-xs mt-1">' + (f.first_discovered || '—').slice(0, 10) + '<br>' + (f.last_observed || '—').slice(0, 10) + '</div></div>' +
         '<div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3"><div class="text-[11px] uppercase text-slate-400">Age / Due</div><div class="font-semibold mt-1">' + f.age_days + ' days</div><div class="text-xs text-slate-400">' + (f.due_date || '—').slice(0, 10) + '</div></div>' +
         '<div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3"><div class="text-[11px] uppercase text-slate-400">Asset</div><div class="font-semibold mt-1">' + (f.asset ? f.asset.name : 'Unmapped') + '</div><div class="text-xs text-slate-400">' + (f.asset ? f.asset.owner_team : '') + '</div></div>' +
         '</div>' +
         (f.is_reappeared ? '<div class="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400"><b>Reappeared</b> after closure — reappeared ' + f.reappeared_count + '× total. Original discovery is preserved.</div>' : '') +
-        '<div class="mt-4"><h4 class="font-semibold text-sm text-slate-400 uppercase mb-2">Description</h4><p class="text-sm leading-relaxed">' + (f.description || '—') + '</p></div>' +
+        '<div class="grid grid-cols-2 gap-3 mt-3 text-sm">' +
+        (isAppSec(f)
+          ? '<div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3"><div class="text-[11px] uppercase text-slate-400">' +
+              (f.source === 'SAST' ? 'File / component' : 'URL / endpoint') + '</div>' +
+              '<div class="text-xs mt-1 break-words">' + esc(f.affected_location || '—') + '</div>' +
+              ((f.cwe_id || f.owasp_category) ? '<div class="text-[11px] text-slate-400 mt-1 break-words">' + esc(f.cwe_id || f.owasp_category) + '</div>' : '') + '</div>'
+          : '<div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3"><div class="text-[11px] uppercase text-slate-400">CVE / VPR</div><div class="text-xs mt-1 break-words">' + (shortCve(f.cve) || '—') + ' · ' + (f.vpr_score != null ? f.vpr_score : '—') + '</div></div>') +
+        '<div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3"><div class="text-[11px] uppercase text-slate-400">From report</div><div class="text-xs mt-1 break-words">' + (f.source_file || '—') + '</div></div>' +
+        '</div>' +
+        '<div class="mt-4"><h4 class="font-semibold text-sm text-slate-400 uppercase mb-2">Description</h4><p class="text-sm leading-relaxed">' +
+        (f.description ? esc(f.description)
+          : '<span class="text-slate-400 italic">This report has no Description column' +
+            (f.source === 'CIS' ? ' — a CIS benchmark export carries the control statement and the evidence, not a description' : '') +
+            (f.source === 'SAST' || f.source === 'DAST' ? ' — a ' + f.source + ' export names the weakness and where it is, not a narrative' : '') +
+            '. Everything it does carry is below and in the full record.</span>') + '</p></div>' +
         '<div class="mt-4"><h4 class="font-semibold text-sm text-slate-400 uppercase mb-2">Remediation</h4><p class="text-sm leading-relaxed whitespace-pre-line">' + (f.remediation_steps || '—') + '</p></div>' +
-        (d.exception ? '<div class="mt-4 rounded-lg border border-purple-500/30 bg-purple-500/10 p-3 text-sm"><span class="font-semibold text-purple-400">' + d.exception.exception_code + '</span> — ' + d.exception.reason + ' (expires ' + (d.exception.expires_at || 'never') + ')</div>' : '');
+        (f.plugin_output ? '<div class="mt-4"><h4 class="font-semibold text-sm text-slate-400 uppercase mb-2">Evidence</h4><pre class="text-[11px] leading-relaxed whitespace-pre-wrap rounded-lg bg-slate-50 dark:bg-slate-800 p-3 max-h-56 overflow-y-auto">' + f.plugin_output + '</pre></div>' : '') +
+        (f.status === 'Closed' ? '<div class="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm"><b class="text-emerald-500">' + (f.closure_label || 'Closed') + '</b>' +
+          (f.closed_at ? '<div class="text-xs text-slate-400 mt-1">Closed on ' + f.closed_at.slice(0, 10) + '</div>' : '') +
+          '<div class="text-xs text-slate-400 mt-1">An automatic closure means a credentialed assessment covered the host and the finding was no longer reported.</div></div>' : '') +
+        (d.exception ? '<div class="mt-4 rounded-lg border border-purple-500/30 bg-purple-500/10 p-3 text-sm">' +
+          '<span class="font-semibold text-purple-500">' + d.exception.exception_code + '</span> — ' + d.exception.reason +
+          ' <span class="text-xs text-slate-400">(' + (d.exception.starts_at || '') + ' → ' + (d.exception.expires_at || 'no expiry') + ')</span>' +
+          (d.exception.justification ? '<div class="text-xs mt-2"><b>Justification:</b> ' + d.exception.justification + '</div>' : '') +
+          (d.exception.compensating_control ? '<div class="text-xs mt-1"><b>Compensating control:</b> ' + d.exception.compensating_control + '</div>' : '') +
+          (d.exception.approval_ref ? '<div class="text-xs mt-1"><b>Approval:</b> ' + d.exception.approval_ref + '</div>' : '') +
+          '</div>' : '') +
+        (raw && raw.columns ? '<div class="mt-4"><h4 class="font-semibold text-sm text-slate-400 uppercase mb-2">The report row</h4>' +
+          '<div class="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden"><table class="w-full text-[12px]">' +
+          raw.columns.map(function (c) {
+            return '<tr class="border-b border-slate-100 dark:border-slate-800 last:border-0 align-top">' +
+              '<td class="px-3 py-1.5 w-40 text-slate-400 whitespace-nowrap">' + esc(c[0]) + '</td>' +
+              '<td class="px-3 py-1.5 break-words whitespace-pre-wrap">' + (c[1] ? esc(c[1]) : '<span class="text-slate-400 italic">empty</span>') + '</td></tr>';
+          }).join('') +
+          '</table></div>' +
+          '<div class="text-[11px] text-slate-400 mt-2">' + esc(raw.file || '') + '</div></div>' : '');
       document.getElementById('detailBody').innerHTML = html;
       document.getElementById('detailDrawer').classList.remove('hidden');
       document.getElementById('detailDrawer').classList.add('flex');
@@ -284,13 +440,29 @@
         function (e) { e.preventDefault(); runBulk('/api/findings/bulk/retest', {}, 'Sent to retest'); });
     });
     document.querySelector('[data-bulk="exception"]').addEventListener('click', function () {
-      modal('Add Exception', '<form class="space-y-4"><select id="excReason" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">' +
-        '<option>Compensating Control</option><option>Risk Accepted</option><option>Vendor Roadmap</option></select>' +
-        '<input type="date" id="excExp" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">' +
+      var reasons = (FILTERS && FILTERS.exception_reasons) || ['Compensating Control'];
+      modal('Add Exception', '<form class="space-y-3">' +
+        '<label class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Technical reason</label>' +
+        '<select id="excReason" class="flt">' + reasons.map(function (r) { return '<option>' + r + '</option>'; }).join('') + '</select>' +
+        '<label class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Justification <span class="text-red-500">*</span></label>' +
+        '<textarea id="excJust" rows="3" required placeholder="Why can this not be remediated inside the SLA?" class="flt"></textarea>' +
+        '<label class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Compensating control</label>' +
+        '<input id="excComp" placeholder="What reduces the exposure meanwhile?" class="flt">' +
+        '<div class="grid grid-cols-2 gap-3">' +
+        '<div><label class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Approval reference</label><input id="excRef" placeholder="CHG-2026-0187" class="flt"></div>' +
+        '<div><label class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Expires on</label><input type="date" id="excExp" class="flt"></div>' +
+        '</div>' +
+        '<p class="text-[11px] text-slate-400">The SLA clock keeps running underneath an exception — when it expires the finding shows its real position immediately.</p>' +
         '<button class="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold">Create Exception</button></form>',
         function (e) {
           e.preventDefault();
-          runBulk('/api/findings/bulk/exception', { reason: document.getElementById('excReason').value, expires_at: document.getElementById('excExp').value }, 'Exception added');
+          runBulk('/api/findings/bulk/exception', {
+            reason: document.getElementById('excReason').value,
+            justification: document.getElementById('excJust').value,
+            compensating_control: document.getElementById('excComp').value,
+            approval_ref: document.getElementById('excRef').value,
+            expires_at: document.getElementById('excExp').value
+          }, 'Exception added');
         });
     });
     document.querySelector('[data-bulk="risk"]').addEventListener('click', function () {
@@ -303,7 +475,54 @@
         '<button class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">Close</button></form>',
         function (e) { e.preventDefault(); runBulk('/api/findings/bulk/close', {}, 'Closed'); });
     });
+    // ---------- upload ----------
+    var picked = [];
+
+    function isSheet(name) { return /\.(xlsx|xls|csv)$/i.test(name); }
+
+    function renderPicked() {
+      var list = document.getElementById('fileList');
+      var btn = document.getElementById('uploadBtn');
+      var hint = document.getElementById('fileHint');
+      if (!picked.length) {
+        list.classList.add('hidden'); list.innerHTML = '';
+        btn.disabled = true;
+        hint.textContent = 'Pick as many as you like — a whole cycle, or the whole folder. ' +
+          'Anything that is not a spreadsheet is ignored, and the files are processed oldest first.';
+        return;
+      }
+      list.classList.remove('hidden');
+      list.innerHTML = picked.map(function (f, i) {
+        return '<div class="flex items-center gap-2 px-3 py-2 text-[12px]">' +
+          '<svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">' +
+          '<path stroke-linecap="round" stroke-linejoin="round" d="M14 3v5h5M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/></svg>' +
+          '<span class="truncate flex-1">' + f.name + '</span>' +
+          '<span class="text-slate-400 shrink-0">' + Math.max(1, Math.round(f.size / 1024)) + ' KB</span>' +
+          '<button type="button" data-drop="' + i + '" class="text-slate-400 hover:text-red-500 shrink-0">&times;</button></div>';
+      }).join('');
+      list.querySelectorAll('[data-drop]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          picked.splice(+b.dataset.drop, 1); renderPicked();
+        });
+      });
+      btn.disabled = false;
+      hint.textContent = picked.length + ' file' + (picked.length === 1 ? '' : 's') + ' ready. ' +
+        'They are processed oldest first; every assessment type can be mixed.';
+    }
+
+    function addFiles(fileList) {
+      Array.prototype.forEach.call(fileList, function (f) {
+        if (!isSheet(f.name)) return;                       // folders bring everything
+        if (/GROUND_TRUTH/i.test(f.name)) return;           // the answer sheet is not an input
+        var already = picked.some(function (p) { return p.name === f.name && p.size === f.size; });
+        if (!already) picked.push(f);
+      });
+      renderPicked();
+    }
+
     document.querySelector('[data-btn="upload"]').addEventListener('click', function () {
+      picked = []; renderPicked();
+      document.getElementById('uploadResult').classList.add('hidden');
       document.getElementById('uploadModal').classList.remove('hidden');
       document.getElementById('uploadModal').classList.add('flex');
     });
@@ -311,29 +530,78 @@
       document.getElementById('uploadModal').classList.add('hidden');
       document.getElementById('uploadModal').classList.remove('flex');
     };
+    document.getElementById('pickFiles').addEventListener('click', function () {
+      document.getElementById('fileInput').click();
+    });
+    document.getElementById('pickFolder').addEventListener('click', function () {
+      document.getElementById('folderInput').click();
+    });
+    document.getElementById('fileInput').addEventListener('change', function (e) { addFiles(e.target.files); });
+    document.getElementById('folderInput').addEventListener('change', function (e) { addFiles(e.target.files); });
+
     document.getElementById('uploadForm').addEventListener('submit', function (e) {
       e.preventDefault();
-      var fd = new FormData(this);
+      if (!picked.length) return;
+      var btn = document.getElementById('uploadBtn');
+      var box = document.getElementById('uploadResult');
+      var fd = new FormData();
+      picked.forEach(function (f) { fd.append('files', f); });
+      fd.append('source_type', 'assessment');
+
+      btn.disabled = true;
+      btn.textContent = 'Importing ' + picked.length + ' file' + (picked.length === 1 ? '' : 's') + '…';
+      box.classList.remove('hidden');
+      box.innerHTML = '<div class="rounded-lg bg-slate-100 dark:bg-slate-800 p-3 text-[12px] text-slate-500 dark:text-slate-400">' +
+        'Correlating. A full cycle takes a few seconds per file — leave this open.</div>';
+
       fetch('/api/upload', { method: 'POST', body: fd }).then(function (r) {
         return r.json().then(function (d) { return { ok: r.ok, d: d }; });
       }).then(function (res) {
-        var box = document.getElementById('uploadResult');
-        box.classList.remove('hidden');
-        if (res.ok) {
-          var s = res.d.stats;
-          box.innerHTML = '<div class="rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-sm text-emerald-500">' +
-            'Import complete: ' + s.records + ' records · ' + s.new + ' new · ' + s.updated + ' updated · ' +
-            (s.reappeared ? '<b>' + s.reappeared + ' reappeared</b>' : '0 reappeared') +
-            (s.unmapped ? ' · <b class="text-amber-400">' + s.unmapped + ' unmapped IPs</b>' : '') + '</div>';
-          toast('Upload processed', true);
-          loadFindings();
-        } else {
-          box.innerHTML = '<div class="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-500">' + (res.d.detail || 'Import failed') + '</div>';
+        btn.disabled = false; btn.textContent = 'Upload & correlate';
+        if (!res.ok) {
+          box.innerHTML = '<div class="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-500">' +
+            (res.d.detail || 'Import failed') + '</div>';
+          return;
         }
-      }).catch(function (e) { toast(e.message, false); });
+        var t = res.d.totals;
+        box.innerHTML =
+          '<div class="rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-sm text-emerald-700 dark:text-emerald-400">' +
+          '<b>' + res.d.processed + ' file' + (res.d.processed === 1 ? '' : 's') + ' imported.</b> ' +
+          t.records + ' rows · ' + t.new + ' new · ' + t.updated + ' updated · ' + t.reappeared +
+          ' reappeared · <b>' + t.closed + ' closed automatically</b>' +
+          (t.unmapped ? '<div class="text-xs mt-1 text-amber-600 dark:text-amber-500">' + t.unmapped +
+            ' rows had no matching asset and were parked on the Default Asset</div>' : '') +
+          // Rows outside this account's grant are not an error - they simply
+          // do not exist for it - but silence would read as data loss.
+          (res.d.skipped_rows ? '<div class="text-xs mt-1 text-amber-600 dark:text-amber-500">' +
+            res.d.skipped_rows + ' rows were outside your assigned scopes and were not imported</div>' : '') +
+          '</div>' +
+          '<div class="mt-2 rounded-lg border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 max-h-56 overflow-y-auto">' +
+          res.d.files.map(function (f) {
+            return '<div class="px-3 py-2 text-[12px]"><div class="flex items-center gap-2">' +
+              '<span class="font-mono text-[11px] text-blue-600 dark:text-blue-400">' + (f.reference || f.detected_type || '') + '</span>' +
+              '<span class="truncate flex-1">' + f.filename + '</span>' +
+              '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold border border-slate-300 dark:border-slate-600">' + (f.detected_type || 'VA') + '</span></div>' +
+              '<div class="text-slate-400 mt-0.5">' + f.new + ' new · ' + f.updated + ' updated · ' +
+              f.reappeared + ' reappeared · ' + f.closed + ' closed</div></div>';
+          }).join('') +
+          (res.d.errors || []).map(function (f) {
+            return '<div class="px-3 py-2 text-[12px] text-red-500"><b>' + f.filename + '</b> — ' + f.error + '</div>';
+          }).join('') +
+          (res.d.ignored || []).map(function (f) {
+            return '<div class="px-3 py-2 text-[12px] text-amber-600 dark:text-amber-500"><b>' + f.filename + '</b> — ' + f.reason + '</div>';
+          }).join('') +
+          '</div>';
+        toast(res.d.processed + ' file(s) imported', true);
+        picked = []; renderPicked();
+        loadFindings();
+      }).catch(function (err) {
+        btn.disabled = false; btn.textContent = 'Upload & correlate';
+        box.innerHTML = '<div class="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-500">' + err.message + '</div>';
+      });
     });
   }
 
-  loadFindings();
+  initFilters().then(function () { loadFindings(); });
 </script>
 {% endblock %}

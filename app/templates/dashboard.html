@@ -2,301 +2,625 @@
 {% block title %}Dashboard · Assurance Platform{% endblock %}
 {% block content %}
 
-<div class="flex items-center justify-between">
+<!-- ======================= PAGE HEAD ======================= -->
+<div class="flex flex-wrap items-end justify-between gap-3">
   <div>
-    <h1 class="text-2xl font-bold">Operational Dashboard</h1>
-    <p class="text-sm text-slate-400 mt-0.5" id="dashSub">Loading…</p>
+    <h1 class="text-2xl font-bold tracking-tight">Assurance Posture</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1" id="dashSub">Loading…</p>
   </div>
-  <a href="/findings" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow">Open Findings</a>
-</div>
-
-<!-- Unmapped IP warning banner -->
-<div id="unmappedBanner" class="hidden items-center gap-3 px-4 py-3 rounded-xl border border-amber-600/40 bg-amber-500/10 text-amber-300 text-sm font-medium">
-  <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
-  <span id="unmappedText"></span>
-</div>
-
-<!-- ======================= METRIC CARDS ======================= -->
-<!-- KPI colors per card -->
-<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-  <div class="card p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-    <div class="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Open</div>
-    <div class="mt-2 text-3xl font-bold text-slate-800 dark:text-white"><span data-kpi="total_open">0</span></div>
-    <div class="mt-1 text-xs" data-kpi-sub="total_findings">…</div>
-  </div>
-  <div class="card p-4 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/30">
-    <div class="text-xs font-medium text-slate-400 uppercase tracking-wide">Within SLA</div>
-    <div class="mt-2 text-3xl font-bold text-emerald-600"><span data-kpi="within_sla">0</span></div>
-    <div class="mt-1 text-xs text-emerald-500">On track</div>
-  </div>
-  <div class="card p-4 rounded-xl bg-white dark:bg-slate-900 border border-amber-500/30">
-    <div class="text-xs font-medium text-slate-400 uppercase tracking-wide">Approaching SLA</div>
-    <div class="mt-2 text-3xl font-bold text-amber-500"><span data-kpi="approaching_sla">0</span></div>
-    <div class="mt-1 text-xs text-amber-500">Action needed</div>
-  </div>
-  <div class="card p-4 rounded-xl bg-white dark:bg-slate-900 border border-red-500/40">
-    <div class="text-xs font-medium text-slate-400 uppercase tracking-wide">SLA Exceeded</div>
-    <div class="mt-2 text-3xl font-bold text-red-500"><span data-kpi="sla_exceeded">0</span></div>
-    <div class="mt-1 text-xs text-red-500">Breached</div>
-  </div>
-  <div class="card p-4 rounded-xl bg-white dark:bg-slate-900 border border-sky-500/30">
-    <div class="text-xs font-medium text-slate-400 uppercase tracking-wide">Pending Retest</div>
-    <div class="mt-2 text-3xl font-bold text-sky-500"><span data-kpi="pending_retest">0</span></div>
-    <div class="mt-1 text-xs text-sky-400">Awaiting validation</div>
-  </div>
-  <div class="card p-4 rounded-xl bg-white dark:bg-slate-900 border border-purple-500/30">
-    <div class="text-xs font-medium text-slate-400 uppercase tracking-wide">Active Exceptions</div>
-    <div class="mt-2 text-3xl font-bold text-purple-500"><span data-kpi="active_exceptions">0</span></div>
-    <div class="mt-1 text-xs text-purple-400">Compensating controls</div>
-  </div>
-</div>
-
-<!-- ======================= LIFECYCLE FLOW + SEVERITY ======================= -->
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-  <!-- Finding Lifecycle Overview -->
-  <div class="xl:col-span-2 p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-    <h2 class="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-4">Finding Lifecycle Overview</h2>
-    <div class="flex flex-wrap gap-3 items-center">
-      <div class="flow-arrow text-center">
-        <div class="px-4 py-2 rounded-lg bg-slate-800 text-slate-100 text-xs font-semibold shadow">Open</div>
-        <div class="mt-1 text-xs font-bold text-slate-300" id="wfOpen">0</div>
-      </div>
-      <div class="flow-arrow text-center">
-        <div class="px-4 py-2 rounded-lg bg-sky-600 text-white text-xs font-semibold shadow">In Progress</div>
-        <div class="mt-1 text-xs font-bold text-sky-400" id="wfInProgress">0</div>
-      </div>
-      <div class="flow-arrow text-center">
-        <div class="px-4 py-2 rounded-lg bg-amber-500 text-slate-900 text-xs font-semibold shadow">Pending Retest</div>
-        <div class="mt-1 text-xs font-bold text-amber-400" id="wfRetest">0</div>
-      </div>
-      <div class="flow-arrow text-center">
-        <div class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold shadow">Closed</div>
-        <div class="mt-1 text-xs font-bold text-emerald-400" id="wfClosed">0</div>
-      </div>
-      <div class="flow-arrow text-center">
-        <div class="px-4 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold shadow">Risk Accepted</div>
-        <div class="mt-1 text-xs font-bold text-purple-400" id="wfRisk">0</div>
-      </div>
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden h-10">
+      <span class="px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-r border-slate-200 dark:border-slate-700 h-full flex items-center">Period</span>
+      <input id="dateFrom" type="date" aria-label="From"
+             class="h-full px-2.5 text-[12.5px] bg-transparent outline-none text-slate-700 dark:text-slate-200" style="width:132px">
+      <span class="text-slate-300 dark:text-slate-600 select-none">–</span>
+      <input id="dateTo" type="date" aria-label="To"
+             class="h-full px-2.5 text-[12.5px] bg-transparent outline-none text-slate-700 dark:text-slate-200" style="width:132px">
+      <button id="dateClear" title="Show the whole history"
+              class="h-full px-3 text-[12px] font-medium text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 border-l border-slate-200 dark:border-slate-700">All</button>
     </div>
-    <p class="mt-3 text-[11px] text-slate-400">Closed findings that reappear in a new scan flip back to <span class="font-semibold">Open</span> with a REAPPEARED tag — age is preserved since first appearance.</p>
-  </div>
-
-  <!-- Severity distribution -->
-  <div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-    <h2 class="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-4">Severity Distribution</h2>
-    <div class="flex items-end gap-3 h-36">
-      <div class="flex-1 flex flex-col items-center gap-1">
-        <div class="flex-1 bg-red-500 rounded-lg w-full backdrop-filter transition-all duration-700" data-sev-bar="Critical"></div>
-        <div class="text-xs font-bold" data-sev-val="Critical">0</div>
-      </div>
-      <div class="flex-1 flex flex-col items-center gap-1">
-        <div class="flex-1 bg-orange-500 rounded-lg w-full transition-all duration-700" data-sev-bar="High"></div>
-        <div class="text-xs font-bold" data-sev-val="High">0</div>
-      </div>
-      <div class="flex-1 flex flex-col items-center gap-1">
-        <div class="flex-1 bg-amber-400 rounded-lg w-full transition-all duration-700" data-sev-bar="Medium"></div>
-        <div class="text-xs font-bold" data-sev-val="Medium">0</div>
-      </div>
-      <div class="flex-1 flex flex-col items-center gap-1">
-        <div class="flex-1 bg-sky-400 rounded-lg w-full transition-all duration-700" data-sev-bar="Low"></div>
-        <div class="text-xs font-bold" data-sev-val="Low">0</div>
-      </div>
-      <div class="flex-1 flex flex-col items-center gap-1">
-        <div class="flex-1 bg-slate-400 rounded-lg w-full transition-all duration-700" data-sev-bar="Info"></div>
-        <div class="text-xs font-bold" data-sev-val="Info">0</div>
-      </div>
-    </div>
-    <div class="flex gap-3 mt-3 text-[11px] text-slate-400">
-      <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-red-500 inline-block"></i>Critical</span>
-      <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-orange-500 inline-block"></i>High</span>
-      <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-amber-400 inline-block"></i>Medium</span>
-      <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-sky-400 inline-block"></i>Low</span>
-      <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-slate-400 inline-block"></i>Info</span>
-    </div>
+    <span class="text-[12px] text-slate-500 dark:text-slate-400" id="dataAsOf"></span>
+    <a href="/api/reports/export" class="text-sm px-3.5 py-2 rounded-lg font-medium border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition">Export</a>
+    <a href="/findings" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">Open Findings</a>
   </div>
 </div>
 
-<!-- ======================= CHARTS ======================= -->
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-  <div class="xl:col-span-2 p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+<!-- ======================= KPI CARDS ======================= -->
+<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4" id="kpiRow"></div>
+
+<!-- ======================= LIFECYCLE + TREND + RETEST ======================= -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+
+  <div class="xl:col-span-5 p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="font-semibold text-sm uppercase tracking-wide text-slate-400">Aging & SLA Trend <span class="normal-case text-slate-500">(last 8 weeks)</span></h2>
-      <div class="text-[11px] text-slate-400">Bar: newly opened · Line: SLA exceeded (cumulative)</div>
+      <h2 class="font-semibold text-[15px]">Finding Lifecycle Overview</h2>
+      <span class="text-[11px] text-slate-400">click a stage to open it</span>
     </div>
-    <div class="h-64 md:h-72"><canvas id="agingChart"></canvas></div>
+    <div id="lifecycle" class="grid grid-cols-3 sm:grid-cols-5 gap-y-4 gap-x-1"></div>
+    <div class="mt-4 pt-3 border-t border-dashed border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400">
+      A finding keeps its original discovery date through every stage. If it comes back after closure it re-enters as
+      <b class="text-rose-500">Reappeared</b> — the clock is never reset.
+    </div>
   </div>
-  <div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-    <h2 class="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-2">Retest & Validation</h2>
-    <div class="h-72"><canvas id="retestChart"></canvas></div>
+  <div class="xl:col-span-4 p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+      <h2 class="font-semibold text-[15px]">Aging &amp; SLA Trend</h2>
+      <span class="text-[11px] text-slate-400" id="trendWindow"></span>
+    </div>
+    <div class="flex flex-wrap gap-3 text-[11px] text-slate-500 dark:text-slate-400 mb-2">
+      <span><i class="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-500 mr-1.5"></i>Within SLA</span>
+      <span><i class="inline-block w-2.5 h-2.5 rounded-sm bg-amber-500 mr-1.5"></i>Approaching</span>
+      <span><i class="inline-block w-2.5 h-2.5 rounded-sm bg-red-500 mr-1.5"></i>Over the deadline</span>
+      <span><i class="inline-block w-3.5 h-0.5 align-middle bg-blue-600 mr-1.5"></i>Total open</span>
+    </div>
+    <div class="h-60"><canvas id="agingChart"></canvas></div>
+    <p class="mt-2 text-[11px] text-slate-400">Bars group findings by the period they were first discovered, coloured by where they stand against the SLA today.</p>
+  </div>
+
+  <div class="xl:col-span-3 p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+    <h2 class="font-semibold text-[15px] mb-2">Retest &amp; Validation</h2>
+    <div class="flex items-center gap-4 flex-1">
+      <div class="relative w-36 h-36 shrink-0">
+        <canvas id="retestChart"></canvas>
+        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span class="text-2xl font-bold" id="retestTotal">0</span>
+          <span class="text-[11px] text-slate-400">Validated</span>
+        </div>
+      </div>
+      <div class="flex-1 space-y-1.5" id="retestLegend"></div>
+    </div>
+    <a href="/retests" class="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-2">Go to Retest &amp; Validation →</a>
   </div>
 </div>
 
-<!-- ======================= RECENT + EXCEPTIONS ======================= -->
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-  <div class="xl:col-span-2 p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="font-semibold text-sm uppercase tracking-wide text-slate-400">Recent Open Findings</h2>
-      <a href="/findings" class="text-xs text-blue-500 hover:underline">View all</a>
+<!-- ======================= COVERAGE / LATEST ASSESSMENT ======================= -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+  <div class="xl:col-span-5 p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-semibold text-[15px]">Assessment Coverage</h2>
+      <a href="/assets" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Asset register</a>
+    </div>
+    <div class="flex items-baseline gap-2">
+      <span class="text-3xl font-bold tabular-nums" id="covPct">0%</span>
+      <span class="text-xs text-slate-500 dark:text-slate-400" id="covSub"></span>
+    </div>
+    <div class="mt-3 h-2.5 w-full rounded-full overflow-hidden flex bg-slate-200 dark:bg-slate-800">
+      <i id="covAssessed" class="block h-full bg-emerald-500" style="width:0%"></i>
+      <i id="covIncon" class="block h-full bg-amber-500" style="width:0%"></i>
+      <i id="covNone" class="block h-full bg-slate-400 dark:bg-slate-600" style="width:0%"></i>
+    </div>
+    <div class="mt-2 flex flex-wrap gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+      <span><i class="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5"></i>Assessed</span>
+      <span><i class="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5"></i>Credentials failed</span>
+      <span><i class="inline-block w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-600 mr-1.5"></i>Never assessed</span>
+    </div>
+
+    <div id="covGapBox" class="hidden mt-4 rounded-xl border border-amber-300 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-500/5 overflow-hidden">
+      <div class="px-3 py-2.5 border-b border-amber-200 dark:border-amber-900/50">
+        <div class="text-[12.5px] font-semibold text-amber-900 dark:text-amber-200" id="covGapTitle"></div>
+        <div class="text-[11.5px] text-amber-900/80 dark:text-amber-200/80 mt-0.5 leading-relaxed" id="covGapWhy"></div>
+      </div>
+      <div class="max-h-52 overflow-y-auto divide-y divide-amber-200/60 dark:divide-amber-900/40" id="covGaps"></div>
+      <div class="px-3 py-2 text-[11px] text-amber-900/70 dark:text-amber-200/70 border-t border-amber-200 dark:border-amber-900/50" id="covGapMore"></div>
+    </div>
+    <p id="covClean" class="hidden mt-4 text-xs text-slate-500 dark:text-slate-400">
+      Every asset was assessed with working credentials.
+    </p>
+  </div>
+
+  <div class="xl:col-span-4 p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-semibold text-[15px]">Latest Assessment</h2>
+      <span class="text-[11px] font-mono text-slate-400" id="lastRef"></span>
+    </div>
+    <div id="lastImport" class="text-sm"></div>
+  </div>
+
+  <div class="xl:col-span-3 p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+    <h2 class="font-semibold text-[15px] mb-3">Open by Severity</h2>
+    <div id="sevBars" class="space-y-2.5"></div>
+    <h3 class="font-semibold text-[13px] mt-5 mb-2 text-slate-500 dark:text-slate-400">Where the work comes from</h3>
+    <div id="sourceLegend" class="space-y-1.5"></div>
+  </div>
+</div>
+
+<!-- ======================= RECENT FINDINGS + EXCEPTIONS ======================= -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+
+  <div class="xl:col-span-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+    <div class="px-5 pt-5 pb-3 flex items-center justify-between">
+      <h2 class="font-semibold text-[15px]">Recent Open Findings</h2>
+      <a href="/findings" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">View all findings →</a>
+    </div>
+    <div class="px-5 pb-3 flex flex-wrap items-center gap-2">
+      <select id="dSeverity" data-filter="severities" data-label="Severity" class="flt" style="width:auto"></select>
+      <select id="dSource" data-filter="sources" data-label="Source" class="flt" style="width:auto"></select>
+      <select id="dScope" data-filter="scopes" data-label="Asset class" class="flt" style="width:auto"></select>
+      <select id="dSLA" data-filter="sla_statuses" data-label="SLA" class="flt" style="width:auto"></select>
+      <button id="dClear" class="text-[12px] text-blue-600 dark:text-blue-400 hover:underline ml-1">Clear all</button>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-700">
-            <th class="py-2 pr-3">Finding</th><th class="py-2 pr-3">Severity</th><th class="py-2 pr-3">Asset</th>
-            <th class="py-2 pr-3">Age</th><th class="py-2">SLA Status</th>
+        <thead class="bg-slate-50 dark:bg-slate-800/50 text-left text-[11px] uppercase tracking-wider text-slate-400 border-y border-slate-200 dark:border-slate-700">
+          <tr>
+            <th class="py-2.5 px-4">Finding</th><th class="py-2.5 px-2">Severity</th>
+            <th class="py-2.5 px-2">Asset</th><th class="py-2.5 px-2">First Seen</th><th class="py-2.5 px-2">Last Seen</th>
+            <th class="py-2.5 px-2">SLA Due</th><th class="py-2.5 px-2">Status</th><th class="py-2.5 px-2">Exception</th><th class="py-2.5 px-2">Retest</th>
           </tr>
         </thead>
         <tbody id="recentTable"></tbody>
       </table>
     </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-slate-200 dark:border-slate-800">
+      <span class="text-[12px] text-slate-500 dark:text-slate-400" id="recentInfo">—</span>
+      <div class="flex items-center gap-2">
+        <button id="recentPrev" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-sm disabled:opacity-40">‹</button>
+        <span class="text-[12px] font-semibold" id="recentPage">1 / 1</span>
+        <button id="recentNext" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-sm disabled:opacity-40">›</button>
+        <select id="recentSize" class="flt" style="width:auto"><option>6</option><option selected>10</option><option>25</option></select>
+      </div>
+    </div>
   </div>
 
-  <!-- Exception Management widget -->
-  <div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="font-semibold text-sm uppercase tracking-wide text-slate-400">Exception Management</h2>
-      <a href="/exceptions" class="text-xs text-blue-500 hover:underline">Manage</a>
+  <div class="xl:col-span-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+    <div class="px-5 pt-5 pb-3 flex items-center justify-between">
+      <h2 class="font-semibold text-[15px]">Exception Management</h2>
+      <a href="/exceptions" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Register →</a>
     </div>
-    <div id="exceptionsWidget" class="space-y-3"></div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 dark:bg-slate-800/50 text-left text-[11px] uppercase tracking-wider text-slate-400 border-y border-slate-200 dark:border-slate-700">
+          <tr><th class="py-2.5 px-3">Exception</th><th class="py-2.5 px-2">Reason</th><th class="py-2.5 px-2">Expires</th></tr>
+        </thead>
+        <tbody id="excTable"></tbody>
+      </table>
+    </div>
+    <div class="px-5 py-3 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800">
+      The SLA clock keeps running under an exception — the finding is reported differently, it is not paused.
+    </div>
   </div>
 </div>
 
-<!-- ======================= DATA WORKFLOW ======================= -->
-<div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-  <h2 class="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-4">Data Workflow Overview</h2>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-    <div class="rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-800/50">
-      <div class="text-xs font-semibold text-blue-400 mb-2">1 · Ingest</div>
-      <p class="text-xs text-slate-400">VA scan .xlsx / .csv parsed & correlated against the asset inventory by IP address.</p>
+<!-- ======================= DATA & WORKFLOW ======================= -->
+<div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+  <h2 class="font-semibold text-[15px] mb-4">Data &amp; Workflow Overview</h2>
+  <div class="flex flex-col lg:flex-row items-stretch gap-3">
+
+    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 p-3 lg:w-56 shrink-0">
+      <div class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-2">Input sources</div>
+      <div class="space-y-1.5 text-[12px]">
+        <div class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">VA assessment export</div>
+        <div class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">CIS benchmark export</div>
+        <div class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">SAST code review</div>
+        <div class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">DAST application scan</div>
+        <div class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">Penetration test report</div>
+        <div class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">Asset inventory</div>
+        <div class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">Exception records</div>
+      </div>
     </div>
-    <div class="rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-800/50">
-      <div class="text-xs font-semibold text-blue-400 mb-2">2 · Correlate</div>
-      <p class="text-xs text-slate-400">Reappeared findings re-opened by <code class="font-mono">IP + Plugin + Port + Protocol</code>, age preserved.</p>
-    </div>
-    <div class="rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-800/50">
-      <div class="text-xs font-semibold text-blue-400 mb-2">3 · SLA Banding</div>
-      <p class="text-xs text-slate-400">Firewall-style rules assign SLA targets; exceptions & retests change banding automatically.</p>
-    </div>
-    <div class="rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-800/50">
-      <div class="text-xs font-semibold text-blue-400 mb-2">4 · Track & Close</div>
-      <p class="text-xs text-slate-400">Ownership, risk mapping, and validation drive findings to Closed or Risk Accepted.</p>
-    </div>
+
+    <div class="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-3" id="pipeline"></div>
+  </div>
+  <div class="mt-3 pt-3 border-t border-dashed border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400 text-center">
+    ← Retest results and the next assessment feed straight back into correlation, which is how a finding closes or reappears without anyone retyping it.
   </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-  var agingChart, retestChart, chartTheme = window.__theme === 'light' ? '#0f172a' : '#f1f5f9';
-  var chartTxt = window.__theme === 'light' ? '#475569' : '#94a3b8';
+  var _aging, _retest;
+  var light = window.__theme !== 'dark';
+  var chartTxt = light ? '#475569' : '#94a3b8';
+  var gridCol = light ? 'rgba(148,163,184,0.22)' : 'rgba(148,163,184,0.12)';
+  var FILTERS = null, rPage = 1, rPages = 1;
+
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) {
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  function pct(n, t) { return t ? Math.round((n / t) * 1000) / 10 : 0; }
+  function fmtDate(s) { return s ? new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'; }
+  function fmtShort(s) { return s ? new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'; }
+  function num(n) { return (n == null ? 0 : n).toLocaleString(); }
+
+  // ---------- small building blocks ----------
+  var ICON = {
+    findings: '<path d="M9 12h6m-6 4h6M5 5h14.5v14H5z"/>',
+    shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 11.5l2.5 2.5 4-4.5"/>',
+    clock: '<path d="M12 8v4l2.5 1.5M12 21a9 9 0 100-18 9 9 0 000 18z"/>',
+    alert: '<path d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/>',
+    retest: '<path d="M4 4v6h6M20 20v-6h-6M5.5 15a7 7 0 0011.6 2.6L20 14M4 10l2.9-2.6A7 7 0 0118.5 9"/>',
+    lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',
+    user: '<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+    upload: '<path d="M12 16V4m0 0L8 8m4-4l4 4M4 20h16"/>',
+    repeat: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V4s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>'
+  };
+  function svg(name, cls) {
+    return '<svg class="' + cls + '" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" ' +
+      'stroke-linecap="round" stroke-linejoin="round">' + ICON[name] + '</svg>';
+  }
+
+  var KPIS = [
+    ['Total Open Findings', 'total_open', 'findings', 'blue', '/findings?status=Open%20(any)'],
+    ['Within SLA', 'within_sla', 'shield', 'emerald', '/sla-tracking'],
+    ['Approaching SLA', 'approaching_sla', 'clock', 'amber', '/sla-tracking'],
+    ['SLA Exceeded', 'sla_exceeded', 'alert', 'red', '/sla-tracking'],
+    ['Pending Retest', 'pending_retest', 'retest', 'sky', '/retests'],
+    ['Active Exceptions', 'active_exceptions', 'lock', 'purple', '/exceptions']
+  ];
+  var TONE = {
+    blue: ['bg-blue-50 dark:bg-blue-500/10', 'text-blue-600 dark:text-blue-400'],
+    emerald: ['bg-emerald-50 dark:bg-emerald-500/10', 'text-emerald-600 dark:text-emerald-400'],
+    amber: ['bg-amber-50 dark:bg-amber-500/10', 'text-amber-600 dark:text-amber-400'],
+    red: ['bg-red-50 dark:bg-red-500/10', 'text-red-600 dark:text-red-400'],
+    sky: ['bg-sky-50 dark:bg-sky-500/10', 'text-sky-600 dark:text-sky-400'],
+    purple: ['bg-purple-50 dark:bg-purple-500/10', 'text-purple-600 dark:text-purple-400'],
+    orange: ['bg-orange-50 dark:bg-orange-500/10', 'text-orange-600 dark:text-orange-400']
+  };
+
+  var LIFECYCLE = [
+    ['Detected', 'total_findings', 'eye', 'blue'],
+    ['Assigned', 'assigned', 'user', 'blue'],
+    ['Within SLA', 'within_sla', 'shield', 'emerald'],
+    ['Approaching', 'approaching_sla', 'clock', 'amber'],
+    ['Exceeded', 'sla_exceeded', 'alert', 'red'],
+    ['Past Due', 'past_due', 'clock', 'orange'],
+    ['In Remediation', 'in_progress', 'upload', 'sky'],
+    ['Pending Retest', 'pending_retest', 'retest', 'sky'],
+    ['Closed', 'closed', 'lock', 'emerald'],
+    ['Reappeared', 'reappeared', 'repeat', 'red']
+  ];
+
+  var PIPELINE = [
+    ['Normalise &amp; correlate', 'Columns are mapped, then rows are matched — on IP, control and port for infrastructure, or on the application and the place inside it for SAST, DAST and PT. Duplicates collapse into one finding.'],
+    ['SLA engine', 'Ordered policy rules, first match wins — the rule sets the due date, the approaching band and the retest trigger.'],
+    ['Lifecycle tracking', 'Open, in remediation, pending retest, closed, reappeared — always keeping the original discovery date.'],
+    ['Dashboards &amp; reports', 'Posture, coverage and exports, all traceable back to the assessment that produced them.']
+  ];
+
+  // The assessment a finding came from, labelled the same way it is on the
+  // Findings page so the two screens read alike.
+  var SOURCE_TONE = {
+    VA:   'text-blue-600 dark:text-blue-400 border-blue-500/40 bg-blue-500/10',
+    CIS:  'text-rose-600 dark:text-rose-400 border-rose-500/40 bg-rose-500/10',
+    SAST: 'text-violet-600 dark:text-violet-400 border-violet-500/40 bg-violet-500/10',
+    DAST: 'text-cyan-600 dark:text-cyan-400 border-cyan-500/40 bg-cyan-500/10',
+    PT:   'text-amber-600 dark:text-amber-400 border-amber-500/40 bg-amber-500/10'
+  };
+  function sourceBadge(source) {
+    var code = source || 'VA';
+    var tone = SOURCE_TONE[code] || 'text-slate-500 border-slate-400/40 bg-slate-400/10';
+    return '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded border ' + tone +
+           ' whitespace-nowrap">' + esc(code) + '</span>';
+  }
 
   function sevBadge(s) {
-    var map = { Critical: ['bg-red-500/15 text-red-500 border-red-500/30', 'Critical'],
-      High: ['bg-orange-500/15 text-orange-500 border-orange-500/30', 'High'],
-      Medium: ['bg-amber-400/15 text-amber-500 border-amber-400/30', 'Medium'],
-      Low: ['bg-sky-400/15 text-sky-500 border-sky-400/30', 'Low'],
-      Info: ['bg-slate-400/15 text-slate-400 border-slate-400/30', 'Info'] };
-    var m = map[s] || map.Info;
-    return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold border ' + m[0] + '">' + m[1] + '</span>';
+    var map = { Critical: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30',
+      High: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30',
+      Medium: 'bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30',
+      Low: 'bg-sky-400/15 text-sky-600 dark:text-sky-400 border-sky-400/30',
+      Info: 'bg-slate-400/15 text-slate-500 dark:text-slate-400 border-slate-400/30' };
+    return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold border ' + (map[s] || map.Info) + '">' + esc(s) + '</span>';
   }
   function slaBadge(s) {
-    var map = { 'Within SLA': 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30',
-      'Approaching SLA': 'bg-amber-400/15 text-amber-500 border-amber-400/30',
-      'SLA Exceeded': 'bg-red-500/15 text-red-500 border-red-500/30',
-      'Under Exception': 'bg-purple-500/15 text-purple-400 border-purple-500/30',
-      'Closed': 'bg-slate-400/15 text-slate-400 border-slate-400/30' };
-    return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold border ' + (map[s] || map['Within SLA']) + '">' + s + '</span>';
+    var map = { 'Within SLA': 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+      'Approaching SLA': 'bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30',
+      'SLA Exceeded': 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30',
+      'Past Due': 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30',
+      'Under Exception': 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30',
+      'Closed': 'bg-slate-400/15 text-slate-500 dark:text-slate-400 border-slate-400/30' };
+    return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold border ' + (map[s] || map['Within SLA']) + '">' + esc(s) + '</span>';
   }
+  // ---------- main load ----------
+  function loadSummary() {
+    return api('/api/summary').then(function (d) {
+      document.getElementById('dashSub').textContent =
+        num(d.total_findings) + ' findings tracked across ' + num(d.assets_total) + ' assets';
+      document.getElementById('dataAsOf').textContent =
+        'Data as of ' + (d.last_assessment ? fmtDate(d.last_assessment.uploaded_at) : '—');
 
-  function load() {
-    api('/api/summary').then(function (d) {
-      document.getElementById('dashSub').textContent = 'Live posture as of ' + new Date().toLocaleString();
-      ['total_open', 'within_sla', 'approaching_sla', 'sla_exceeded', 'pending_retest', 'active_exceptions'].forEach(function (k) {
-        var el = document.querySelector('[data-kpi="' + k + '"]');
-        if (el) el.textContent = d[k];
-      });
-      document.querySelector('[data-kpi-sub="total_findings"]').textContent = d.total_findings + ' total findings · ' + d.closed + ' closed · ' + d.risk_accepted + ' risk accepted';
+      // KPI row
+      var open = d.total_open || 0;
+      var subs = {
+        total_open: 'on ' + num(d.assets_with_findings) + ' assets · ' + num(d.closed) + ' closed',
+        within_sla: pct(d.within_sla, open) + '% of open findings',
+        approaching_sla: pct(d.approaching_sla, open) + '% of open findings',
+        sla_exceeded: pct(d.sla_exceeded, open) + '% of open · ' + num(d.past_due) + ' more past due, not reassessed',
+        pending_retest: 'auto-flagged by policy',
+        active_exceptions: num(d.under_exception) + ' findings covered'
+      };
+      document.getElementById('kpiRow').innerHTML = KPIS.map(function (k) {
+        var t = TONE[k[3]];
+        return '<a href="' + k[4] + '" class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition block">' +
+          '<div class="flex items-start gap-3">' +
+          '<span class="w-10 h-10 rounded-xl ' + t[0] + ' ' + t[1] + ' flex items-center justify-center shrink-0">' + svg(k[2], 'w-5 h-5') + '</span>' +
+          '<div class="min-w-0"><div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 leading-tight">' + k[0] + '</div>' +
+          '<div class="text-2xl font-bold mt-0.5 text-slate-900 dark:text-white tabular-nums">' + num(d[k[1]]) + '</div>' +
+          '<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">' + subs[k[1]] + '</div></div></div></a>';
+      }).join('');
+
+      // lifecycle chain
+      document.getElementById('lifecycle').innerHTML = LIFECYCLE.map(function (s) {
+        var t = TONE[s[3]];
+        return '<div class="flex flex-col items-center text-center px-1">' +
+          '<span class="w-11 h-11 rounded-full border border-slate-200 dark:border-slate-700 ' + t[0] + ' ' + t[1] + ' flex items-center justify-center">' + svg(s[2], 'w-5 h-5') + '</span>' +
+          '<div class="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400 mt-1.5 leading-tight">' + s[0] + '</div>' +
+          '<div class="text-base font-bold mt-0.5 text-slate-900 dark:text-white tabular-nums">' + num(d[s[1]]) + '</div></div>';
+      }).join('');
+
       // severity bars
-      var max = Math.max.apply(null, Object.values(d.severity_counts).concat([1]));
-      Object.keys(d.severity_counts).forEach(function (sev) {
-        var bar = document.querySelector('[data-sev-bar="' + sev + '"]');
-        var val = document.querySelector('[data-sev-val="' + sev + '"]');
-        if (bar) bar.style.height = Math.max(6, (d.severity_counts[sev] / max) * 100) + '%';
-        if (val) val.textContent = d.severity_counts[sev];
-      });
-      // workflow
-      document.getElementById('wfOpen').textContent = d.workflow.Open || 0;
-      document.getElementById('wfInProgress').textContent = d.workflow['In Progress'] || 0;
-      document.getElementById('wfRetest').textContent = d.workflow['Pending Retest'] || 0;
-      document.getElementById('wfClosed').textContent = d.workflow.Closed || 0;
-      document.getElementById('wfRisk').textContent = d.workflow['Risk Accepted'] || 0;
-      // unmapped banner
-      if (d.unmapped_ips > 0) {
-        var b = document.getElementById('unmappedBanner');
-        b.classList.remove('hidden'); b.classList.add('flex');
-        document.getElementById('unmappedText').textContent = d.unmapped_ips + ' IP addresses in the last import are not in the asset inventory. ';
-      }
-      // recent findings
-      var scope = window.__scope || '';
-      var rows = d.recent.filter(function (f) { return !scope || (f.asset && f.asset.scope === scope); });
-      var tbody = document.getElementById('recentTable');
-      tbody.innerHTML = rows.length ? rows.map(function (f) {
-        var name = f.plugin_name;
-        if (f.is_reappeared) name += ' <span class="text-[10px] font-bold text-red-400 border border-red-500/40 bg-red-500/10 px-1 py-0.5 rounded ml-1">REAPPEARED</span>';
-        return '<tr class="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40">' +
-          '<td class="py-2.5 pr-3"><a href="/findings" class="font-medium hover:text-blue-500">' + f.finding_code + '</a><div class="text-xs text-slate-400 truncate max-w-[220px]">' + name + '</div></td>' +
-          '<td class="py-2.5 pr-3">' + sevBadge(f.severity) + '</td>' +
-          '<td class="py-2.5 pr-3 text-xs">' + (f.asset ? f.asset.name + '<div class="text-slate-400">' + f.ip_address + '</div>' : f.ip_address) + '</td>' +
-          '<td class="py-2.5 pr-3 text-xs font-semibold">' + f.age_days + 'd</td>' +
-          '<td class="py-2.5">' + slaBadge(f.sla_status) + '</td></tr>';
-      }).join('') : '<tr><td class="py-4 text-center text-slate-400" colspan="5">No open findings</td></tr>';
-      // exceptions widget
-      var ew = document.getElementById('exceptionsWidget');
-      ew.innerHTML = d.exceptions_recent.length ? d.exceptions_recent.map(function (e) {
-        return '<div class="flex items-center justify-between rounded-lg border border-purple-500/20 bg-purple-500/5 px-3 py-2.5">' +
-          '<div><div class="text-xs font-semibold">' + e.exception_code + '</div>' +
-          '<div class="text-[11px] text-slate-400">' + e.finding_code + ' · ' + e.reason + '</div></div>' +
-          '<div class="text-right"><span class="text-[10px] uppercase font-bold text-purple-400">' + (e.expires_at ? 'til ' + e.expires_at.slice(0, 10) : 'no expiry') + '</span></div></div>';
-      }).join('') : '<p class="text-sm text-slate-400">No active exceptions.</p>';
-    }).catch(function (e) {
-      if (e.message.indexOf('401') > -1) window.location.href = '/login';
-      else toast(e.message, false);
-    });
+      var sev = d.severity_counts;
+      var sevMax = Math.max.apply(null, Object.keys(sev).map(function (k) { return sev[k]; }).concat([1]));
+      var sevCol = { Critical: 'bg-red-500', High: 'bg-orange-500', Medium: 'bg-amber-400', Low: 'bg-sky-400', Info: 'bg-slate-400' };
+      document.getElementById('sevBars').innerHTML = Object.keys(sev).map(function (k) {
+        return '<div class="flex items-center gap-3"><span class="w-14 text-[12px] text-slate-500 dark:text-slate-400">' + k + '</span>' +
+          '<div class="flex-1 h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">' +
+          '<i class="block h-full rounded-full ' + sevCol[k] + '" style="width:' + Math.max(2, (sev[k] / sevMax) * 100) + '%"></i></div>' +
+          '<span class="w-12 text-right text-[12px] font-bold">' + num(sev[k]) + '</span></div>';
+      }).join('');
 
-    api('/api/dashboard/charts').then(function (ch) {
-      if (agingChart) agingChart.destroy();
-      agingChart = new Chart(document.getElementById('agingChart'), {
-        data: {
-          labels: ch.aging_trend.labels,
-          datasets: [
-            { type: 'bar', label: 'Opened', data: ch.aging_trend.opened, backgroundColor: 'rgba(59,130,246,0.6)', stack: 'sla', borderRadius: 4 },
-            { type: 'bar', label: 'Within SLA', data: ch.aging_trend.within, backgroundColor: 'rgba(16,185,129,0.45)', stack: 'sla', borderRadius: 4 },
-            { type: 'bar', label: 'Approaching', data: ch.aging_trend.approaching, backgroundColor: 'rgba(251,191,36,0.55)', stack: 'sla', borderRadius: 4 },
-            { type: 'line', label: 'SLA Exceeded', data: ch.aging_trend.exceeded, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', tension: 0.3, fill: true, pointRadius: 3, pointBackgroundColor: '#ef4444', yAxisID: 'y2' },
-          ],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { labels: { color: chartTxt, boxWidth: 10, font: { size: 11 } } } },
-          scales: {
-            x: { stacked: true, ticks: { color: chartTxt, font: { size: 10 } }, grid: { color: 'transparent' } },
-            y: { stacked: true, ticks: { color: chartTxt, font: { size: 10 } }, grid: { color: 'rgba(148,163,184,0.1)' } },
-            y2: { position: 'right', beginAtZero: true, ticks: { color: '#ef4444', font: { size: 10 }, precision: 0 }, grid: { drawOnChartArea: false } },
-          },
-        },
-      });
-      if (retestChart) retestChart.destroy();
-      retestChart = new Chart(document.getElementById('retestChart'), {
-        type: 'doughnut',
-        data: {
-          labels: ch.retest_doughnut.labels,
-          datasets: [{ data: ch.retest_doughnut.values,
-            backgroundColor: ['#0ea5e9', '#10b981', '#ef4444', '#64748b'], borderWidth: 2, borderColor: window.__theme === 'light' ? '#fff' : '#0f172a' }],
-        },
-        options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
-          plugins: { legend: { position: 'bottom', labels: { color: chartTxt, boxWidth: 10, font: { size: 11 } } } } },
-      });
+      // source legend
+      var src = d.sources;
+      var bySource = d.by_source || {};
+      // One row per assessment the platform knows about. A row for a type the
+      // current view excludes would always read zero, which looks like a
+      // broken number rather than a filter, so it is left out instead.
+      var vw = d.view || {};
+      var allowed = (vw.source_options || []).slice();
+      function shown(code) {
+        if (vw.source) return vw.source === code;
+        return !allowed.length || allowed.indexOf(code) > -1;
+      }
+      var TONE_BY_SOURCE = { VA: '#2563eb', CIS: '#ef4444', SAST: '#8b5cf6',
+                             DAST: '#0891b2', PT: '#f59e0b' };
+      var LABEL_BY_SOURCE = { VA: 'VA — infrastructure', CIS: 'CIS — benchmark',
+                              SAST: 'SAST — code', DAST: 'DAST — running app',
+                              PT: 'PT — manual testing' };
+      var rows = Object.keys(TONE_BY_SOURCE)
+        .filter(function (code) { return shown(code) && (bySource[code] || 0) >= 0; })
+        .map(function (code) {
+          return [LABEL_BY_SOURCE[code], bySource[code] || 0, TONE_BY_SOURCE[code], true];
+        });
+      if (shown('CIS') && src.cis_manual) {
+        rows.push(['CIS — manual review', src.cis_manual, '#fbbf24', true]);
+      }
+      document.getElementById('sourceLegend').innerHTML =
+        rows.map(function (r) {
+          return '<div class="flex items-center gap-2 text-[12px]"><i class="w-2.5 h-2.5 rounded-sm inline-block" style="background:' + r[2] + '"></i>' +
+            '<span class="text-slate-500 dark:text-slate-400">' + r[0] + '</span><b class="ml-auto">' + num(r[1]) + '</b></div>';
+        }).join('') +
+        '<div class="flex items-center gap-2 text-[12px] pt-1.5 mt-1.5 border-t border-slate-100 dark:border-slate-800">' +
+        '<span class="text-slate-500 dark:text-slate-400">Closed automatically</span><b class="ml-auto">' + num(d.closed_automatic) + '</b></div>' +
+        '<div class="flex items-center gap-2 text-[12px]"><span class="text-slate-500 dark:text-slate-400">Closed by a user</span><b class="ml-auto">' + num(d.closed_manual) + '</b></div>';
+
+      // coverage
+      var tot = d.assets_total || 1;
+      document.getElementById('covPct').textContent = d.coverage.pct + '%';
+      document.getElementById('covSub').textContent =
+        num(d.coverage.assessed) + ' of ' + num(d.assets_total) + ' assets assessed with working credentials';
+      document.getElementById('covAssessed').style.width = pct(d.coverage.assessed, tot) + '%';
+      document.getElementById('covIncon').style.width = pct(d.coverage.inconclusive, tot) + '%';
+      document.getElementById('covNone').style.width = pct(d.coverage.not_assessed, tot) + '%';
+
+      var gaps = d.coverage.gaps || [];
+      var box = document.getElementById('covGapBox');
+      var clean = document.getElementById('covClean');
+      if (!gaps.length) {
+        box.classList.add('hidden');
+        clean.classList.remove('hidden');
+      } else {
+        clean.classList.add('hidden');
+        box.classList.remove('hidden');
+
+        var reasons = [];
+        if (d.coverage.inconclusive) reasons.push(num(d.coverage.inconclusive) + ' where the scan credentials failed');
+        if (d.coverage.not_assessed) reasons.push(num(d.coverage.not_assessed) + ' never assessed');
+        if (d.coverage.stale) reasons.push(num(d.coverage.stale) + ' last assessed over 30 days ago');
+
+        document.getElementById('covGapTitle').textContent =
+          num(d.coverage.gap_total) + ' assets cannot be proven clean';
+        document.getElementById('covGapWhy').innerHTML =
+          reasons.join(' · ') + '. Findings on these never close on their own — <b>' +
+          num(d.coverage.blocked_findings) + ' open findings are waiting on it</b>.';
+
+        // Named apart from the KPI palette on purpose: a second `var TONE`
+        // in this function hoists to the top and blanks the outer one.
+        var GAP_TONE = { 'Credentials failed': 'text-amber-700 dark:text-amber-400',
+                         'Never assessed': 'text-slate-600 dark:text-slate-300',
+                         'Stale': 'text-sky-700 dark:text-sky-400' };
+        document.getElementById('covGaps').innerHTML = gaps.map(function (g) {
+          return '<a href="/assets?q=' + encodeURIComponent(g.ip_address) + '" ' +
+            'class="flex items-center gap-2 px-3 py-2 hover:bg-amber-100/60 dark:hover:bg-amber-500/10 transition">' +
+            '<span class="font-mono text-[12px] tabular-nums w-28 shrink-0">' + esc(g.ip_address) + '</span>' +
+            '<span class="text-[12px] truncate flex-1">' + esc(g.name) + '</span>' +
+            '<span class="text-[11px] shrink-0 ' + (GAP_TONE[g.state] || '') + '">' + esc(g.state) + '</span>' +
+            '<span class="text-[11px] text-slate-500 dark:text-slate-400 shrink-0 w-16 text-right">' +
+            (g.blocked ? g.blocked + ' stuck' : '\u2014') + '</span></a>';
+        }).join('');
+
+        var shown = gaps.length, total = d.coverage.gap_total;
+        document.getElementById('covGapMore').innerHTML = (shown < total)
+          ? 'Showing the ' + shown + ' holding the most findings. <a class="underline" href="/assets?coverage=Inconclusive">See all ' + total + '</a>'
+          : 'Fix the scan account on these hosts and re-run the assessment \u2014 anything already remediated closes by itself.';
+      }
+
+      // latest assessment
+      var a = d.last_assessment;
+      document.getElementById('lastRef').textContent = a ? (a.reference_code || '') : '';
+      document.getElementById('lastImport').innerHTML = a
+        ? '<div class="text-[12px] text-slate-500 dark:text-slate-400 mb-3 truncate">' + esc(a.filename) + '<br>' + fmtDate(a.uploaded_at) + ' · ' + esc(a.source_type) + '</div>' +
+          [['Rows processed', a.record_count, ''],
+           ['New findings', a.new_findings, 'text-blue-600 dark:text-blue-400'],
+           ['Existing updated', a.updated_findings, ''],
+           ['Reappeared', a.reappeared_findings, 'text-rose-600 dark:text-rose-400'],
+           ['Closed automatically', a.closed_findings, 'text-emerald-600 dark:text-emerald-400'],
+           ['Hosts assessed / inconclusive', (a.assessed_ips || 0) + ' / ' + (a.inconclusive_ips || 0), ''],
+           ['Rows with no matching asset', a.unmapped_ips, 'text-amber-600 dark:text-amber-400']].map(function (kv) {
+            return '<div class="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">' +
+              '<span class="text-[12px] text-slate-500 dark:text-slate-400">' + kv[0] + '</span>' +
+              '<span class="text-sm font-semibold ' + kv[2] + '">' + (kv[1] == null ? 0 : kv[1]) + '</span></div>';
+          }).join('') +
+          '<a href="/reports" class="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-3 inline-block">Assessment history →</a>'
+        : '<p class="text-sm text-slate-400">No assessment has been uploaded yet.</p>';
     });
   }
-  load();
+
+  // A panel whose page this account cannot read says so, quietly, instead of
+  // failing and leaving an empty box with no explanation.
+  function denied(id, what) {
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = '<tr><td colspan="9" class="py-8 text-center text-slate-400 text-sm">' +
+      'You do not have access to ' + what + '.</td></tr>';
+  }
+
+  function loadExceptions() {
+    return api('/api/exceptions?page_size=6&status=Active').then(function (d) {
+      document.getElementById('excTable').innerHTML = d.exceptions.length ? d.exceptions.map(function (e) {
+        var days = e.expires_at ? Math.round((new Date(e.expires_at) - new Date()) / 86400000) : null;
+        var tone = days === null ? 'text-slate-400' : days <= 7 ? 'text-red-500' : days <= 30 ? 'text-amber-500' : 'text-slate-500 dark:text-slate-400';
+        return '<tr class="border-b border-slate-100 dark:border-slate-800/60">' +
+          '<td class="py-2.5 px-3"><div class="font-mono text-[11px] text-purple-600 dark:text-purple-400 whitespace-nowrap">' + esc(e.exception_code) + '</div>' +
+          '<div class="text-[10px] text-slate-400 truncate max-w-[110px]">' + esc(e.finding_code || 'control-level') + '</div></td>' +
+          '<td class="py-2.5 px-2 text-[11px]">' + esc(e.reason) + '</td>' +
+          '<td class="py-2.5 px-2 text-[11px] whitespace-nowrap ' + tone + '">' + (e.expires_at ? fmtShort(e.expires_at) + '<div class="text-[10px]">' + days + 'd left</div>' : 'no expiry') + '</td></tr>';
+      }).join('') : '<tr><td colspan="3" class="py-8 text-center text-slate-400 text-sm">No active exceptions.</td></tr>';
+    }).catch(function () { denied('excTable', 'the exception register'); });
+  }
+
+  function loadRecent(resetPage) {
+    if (resetPage !== false) rPage = 1;
+    var p = new URLSearchParams({ status: 'Open (any)', page: rPage, page_size: document.getElementById('recentSize').value });
+    [['severity', 'dSeverity'], ['source', 'dSource'], ['scope', 'dScope'], ['sla_status', 'dSLA']].forEach(function (f) {
+      var v = document.getElementById(f[1]).value;
+      if (v) p.set(f[0], v);
+    });
+    return api('/api/findings?' + p.toString()).then(function (d) {
+      rPage = d.page; rPages = d.pages;
+      document.getElementById('recentInfo').textContent = d.total
+        ? ('Showing ' + (((d.page - 1) * d.page_size) + 1) + ' to ' + Math.min(d.page * d.page_size, d.total) + ' of ' + num(d.total) + ' results')
+        : 'No results';
+      document.getElementById('recentPage').textContent = d.page + ' / ' + d.pages;
+      document.getElementById('recentPrev').disabled = d.page <= 1;
+      document.getElementById('recentNext').disabled = d.page >= d.pages;
+      document.getElementById('recentTable').innerHTML = d.findings.length ? d.findings.map(function (f) {
+        var left = f.due_date ? Math.round((new Date(f.due_date) - new Date()) / 86400000) : null;
+        return '<tr class="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40">' +
+          '<td class="py-2.5 px-4"><a href="/findings?q=' + encodeURIComponent(f.finding_code) + '" class="font-semibold text-blue-600 dark:text-blue-400">' + esc(f.finding_code) + '</a>' +
+          '<div class="text-[11px] text-slate-400 truncate max-w-[190px]">' + sourceBadge(f.source) + ' ' + esc(f.plugin_name) +
+          (f.is_reappeared ? ' <span class="text-rose-500 font-bold">· REAPPEARED</span>' : '') + '</div></td>' +
+          '<td class="py-2.5 px-2">' + sevBadge(f.severity) + '</td>' +
+          '<td class="py-2.5 px-2 text-[12px]"><div class="truncate max-w-[140px]">' + esc(f.asset ? f.asset.name : 'Unmapped') + '</div><div class="text-slate-400">' + esc(f.ip_address) + '</div></td>' +
+          '<td class="py-2.5 px-2 text-[12px] text-slate-500 dark:text-slate-400 whitespace-nowrap">' + fmtShort(f.first_discovered) + '</td>' +
+          '<td class="py-2.5 px-2 text-[12px] text-slate-500 dark:text-slate-400 whitespace-nowrap">' + fmtShort(f.last_observed) + '</td>' +
+          '<td class="py-2.5 px-2 text-[12px] whitespace-nowrap">' + (f.due_date ? fmtShort(f.due_date) : '—') + (left !== null ? '<div class="text-[10px] ' + (left < 0 ? 'text-red-500' : 'text-slate-400') + '">' + (left < 0 ? Math.abs(left) + 'd over' : left + 'd left') + '</div>' : '') + '</td>' +
+          '<td class="py-2.5 px-2 whitespace-nowrap">' + slaBadge(f.sla_status) + '</td>' +
+          '<td class="py-2.5 px-2 text-[11px] font-mono text-purple-600 dark:text-purple-400 whitespace-nowrap">' + (f.exception_id ? esc(f.exception_id) : '<span class="text-slate-400 font-sans">—</span>') + '</td>' +
+          '<td class="py-2.5 px-2 text-[12px] whitespace-nowrap">' + (f.retest_status || '—') + '</td></tr>';
+      }).join('') : '<tr><td colspan="10" class="py-8 text-center text-slate-400 text-sm">No findings match these filters.</td></tr>';
+    }).catch(function () { denied('recentTable', 'the findings register'); });
+  }
+
+  function rangeQuery() {
+    var f = document.getElementById('dateFrom').value;
+    var t = document.getElementById('dateTo').value;
+    var p = new URLSearchParams();
+    if (f) p.set('date_from', f);
+    if (t) p.set('date_to', t);
+    var q = p.toString();
+    return q ? '?' + q : '';
+  }
+
+  function loadCharts() {
+    return api('/api/dashboard/charts' + rangeQuery()).then(function (ch) {
+      document.getElementById('trendWindow').textContent =
+        fmtDate(ch.window.from) + ' — ' + fmtDate(ch.window.to) +
+        (ch.window.filtered ? '  ·  ' + num(ch.window.findings_in_window) + ' findings in range' : '');
+      if (!document.getElementById('dateFrom').value) {
+        document.getElementById('dateFrom').min = (ch.window.data_from || '').slice(0, 10);
+        document.getElementById('dateTo').max = (ch.window.data_to || '').slice(0, 10);
+      }
+      if (_aging) _aging.destroy();
+      _aging = new Chart(document.getElementById('agingChart'), {
+        data: { labels: ch.aging_trend.labels,
+          datasets: [
+            { type: 'bar', label: 'Within SLA', data: ch.aging_trend.within, backgroundColor: '#22c55e', stack: 's', borderRadius: 2 },
+            { type: 'bar', label: 'Approaching', data: ch.aging_trend.approaching, backgroundColor: '#f59e0b', stack: 's', borderRadius: 2 },
+            { type: 'bar', label: 'Exceeded', data: ch.aging_trend.exceeded, backgroundColor: '#ef4444', stack: 's', borderRadius: 2 },
+            { type: 'line', label: 'Total open', data: ch.aging_trend.total_open, borderColor: '#1d4ed8',
+              backgroundColor: 'transparent', tension: 0.35, pointRadius: 2.5, pointBackgroundColor: '#fff',
+              pointBorderColor: '#1d4ed8', borderWidth: 2 }
+          ] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { stacked: true, ticks: { color: chartTxt, font: { size: 10 } }, grid: { display: false } },
+            y: { stacked: true, beginAtZero: true, ticks: { color: chartTxt, font: { size: 10 }, precision: 0 }, grid: { color: gridCol } }
+          } }
+      });
+
+      var labels = ch.retest_doughnut.labels, values = ch.retest_doughnut.values;
+      var total = values.reduce(function (a, b) { return a + b; }, 0);
+      document.getElementById('retestTotal').textContent = num(total);
+      var cols = ['#f59e0b', '#22c55e', '#ef4444'];
+      if (_retest) _retest.destroy();
+      _retest = new Chart(document.getElementById('retestChart'), {
+        type: 'doughnut',
+        data: { labels: labels, datasets: [{ data: values, backgroundColor: cols, borderWidth: 2,
+          borderColor: light ? '#fff' : '#0f172a' }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } }
+      });
+      document.getElementById('retestLegend').innerHTML = labels.map(function (l, i) {
+        return '<div class="flex items-center gap-2 text-[12px]"><i class="w-2.5 h-2.5 rounded-full inline-block" style="background:' + cols[i] + '"></i>' +
+          '<span class="text-slate-500 dark:text-slate-400">' + l + '</span>' +
+          '<b class="ml-auto">' + num(values[i]) + '</b></div>';
+      }).join('');
+    }).catch(function () { /* charts are decoration - never block the page */ });
+  }
+
+  function renderPipeline() {
+    document.getElementById('pipeline').innerHTML = PIPELINE.map(function (s, i) {
+      return '<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 p-3">' +
+        '<div class="flex items-center gap-2 mb-1.5"><span class="w-6 h-6 rounded-lg bg-blue-600 text-white text-[11px] font-bold flex items-center justify-center">' + (i + 1) + '</span>' +
+        '<span class="text-[12px] font-semibold">' + s[0] + '</span></div>' +
+        '<p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">' + s[1] + '</p></div>';
+    }).join('');
+  }
+
+  function initFilters() {
+    return api('/api/filters').then(function (d) {
+      FILTERS = d;
+      document.querySelectorAll('select.flt[data-filter]').forEach(function (el) {
+        el.innerHTML = '<option value="">' + el.dataset.label + ': All</option>' +
+          (d[el.dataset.filter] || []).map(function (v) { return '<option>' + v + '</option>'; }).join('');
+      });
+    }).catch(function () {});
+  }
+
+  ['dSeverity', 'dSource', 'dScope', 'dSLA', 'recentSize'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', function () { loadRecent(); });
+  });
+  document.getElementById('dClear').addEventListener('click', function () {
+    ['dSeverity', 'dSource', 'dScope', 'dSLA'].forEach(function (id) { document.getElementById(id).value = ''; });
+    loadRecent();
+  });
+  document.getElementById('recentPrev').addEventListener('click', function () { if (rPage > 1) { rPage--; loadRecent(false); } });
+  document.getElementById('recentNext').addEventListener('click', function () { if (rPage < rPages) { rPage++; loadRecent(false); } });
+
+  ['dateFrom', 'dateTo'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', function () { loadCharts(); });
+  });
+  document.getElementById('dateClear').addEventListener('click', function () {
+    document.getElementById('dateFrom').value = '';
+    document.getElementById('dateTo').value = '';
+    loadCharts();
+  });
+
+  renderPipeline();
+  loadSummary().catch(function (e) {
+    if (String(e.message).indexOf('401') > -1) window.location.href = '/login'; else toast(e.message, false);
+  });
+  loadCharts();
+  loadExceptions();
+  initFilters().then(function () { loadRecent(); });
 </script>
 {% endblock %}

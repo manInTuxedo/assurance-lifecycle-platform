@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}{{ finding.finding_code }} · Assurance Platform{% endblock %}
+{% block content %}
+
+{% set sev_tone = {'Critical':'bg-red-500/10 text-red-500 border-red-500/30',
+                   'High':'bg-orange-500/10 text-orange-500 border-orange-500/30',
+                   'Medium':'bg-amber-500/10 text-amber-500 border-amber-500/30',
+                   'Low':'bg-blue-500/10 text-blue-500 border-blue-500/30',
+                   'Info':'bg-slate-500/10 text-slate-500 border-slate-500/30'} %}
+{% set sla_tone = {'Within SLA':'bg-emerald-500/10 text-emerald-500 border-emerald-500/30',
+                   'Approaching SLA':'bg-amber-500/10 text-amber-500 border-amber-500/30',
+                   'Past Due':'bg-orange-500/10 text-orange-500 border-orange-500/30',
+                   'SLA Exceeded':'bg-red-500/10 text-red-500 border-red-500/30',
+                   'Under Exception':'bg-purple-500/10 text-purple-500 border-purple-500/30',
+                   'Closed':'bg-slate-500/10 text-slate-500 border-slate-500/30'} %}
+
+<div class="flex flex-wrap items-start justify-between gap-3">
+  <div class="min-w-0">
+    <a href="/findings" class="text-[12px] text-blue-600 dark:text-blue-400 hover:underline">&larr; Back to findings</a>
+    <h1 class="text-2xl font-bold mt-1 break-words">{{ finding.finding_code }}</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 break-words">{{ finding.plugin_name }}</p>
+    <div class="flex flex-wrap gap-2 mt-3">
+      <span class="text-[11px] px-2 py-1 rounded-full border {{ sev_tone.get(finding.severity, 'bg-slate-500/10 text-slate-500 border-slate-500/30') }}">{{ finding.severity }}</span>
+      <span class="text-[11px] px-2 py-1 rounded-full border {{ sla_tone.get(finding.sla_status, 'bg-slate-500/10 text-slate-500 border-slate-500/30') }}">{{ finding.sla_status }}</span>
+      <span class="text-[11px] px-2 py-1 rounded-full border border-slate-300 dark:border-slate-700 text-slate-500">{{ finding.source }}</span>
+      {% if finding.compliance_result %}<span class="text-[11px] px-2 py-1 rounded-full border border-slate-300 dark:border-slate-700 text-slate-500">{{ finding.compliance_result }}</span>{% endif %}
+      {% if finding.retest_status %}<span class="text-[11px] px-2 py-1 rounded-full border border-slate-300 dark:border-slate-700 text-slate-500">Retest {{ finding.retest_status }}</span>{% endif %}
+      {% if finding.is_reappeared %}<span class="text-[11px] px-2 py-1 rounded-full border border-red-500/30 bg-red-500/10 text-red-500">Reappeared &times;{{ finding.reappeared_count }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="text-right text-sm text-slate-500 dark:text-slate-400">
+    <div>Age <span class="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">{{ finding.age_days }}</span> days</div>
+    <div>Due {{ (finding.due_date or '—')[:10] }}</div>
+  </div>
+</div>
+
+{% if finding.status == 'Closed' %}
+<div class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm">
+  <b class="text-emerald-500">{{ finding.closure_label or 'Closed' }}</b>
+  {% if finding.closed_at %}<span class="text-slate-500 dark:text-slate-400">on {{ finding.closed_at[:10] }}</span>{% endif %}
+  {% if finding.closure_evidence %}<div class="text-xs text-slate-500 dark:text-slate-400 mt-1">Evidence: {{ finding.closure_evidence }}</div>{% endif %}
+</div>
+{% endif %}
+
+<!-- ============ THE ORIGINAL SHEET ROW ============ -->
+<div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+  <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+    <h2 class="font-semibold">The assessment row, exactly as it arrived</h2>
+    {% if raw %}
+    <p class="text-[12px] text-slate-500 dark:text-slate-400 mt-1">
+      Every column of the report, in the report's own order — nothing dropped, nothing renamed.
+      From <span class="font-medium text-slate-700 dark:text-slate-200">{{ raw.file }}</span>
+      {% if raw.assessment %}({{ raw.assessment }}){% endif %}.
+      An empty cell below was empty in the file.
+    </p>
+    {% else %}
+    <p class="text-[12px] text-slate-500 dark:text-slate-400 mt-1">
+      This finding was imported before the platform began keeping the original row.
+      Re-upload the report and it will appear here.
+    </p>
+    {% endif %}
+  </div>
+  {% if raw %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <tbody>
+        {% for header, value in raw.columns %}
+        <tr class="border-b border-slate-100 dark:border-slate-800 last:border-0 align-top">
+          <td class="px-5 py-2.5 w-64 text-slate-500 dark:text-slate-400 whitespace-nowrap">{{ header }}</td>
+          <td class="px-5 py-2.5">
+            {% if value %}<span class="whitespace-pre-wrap break-words">{{ value }}</span>
+            {% else %}<span class="text-slate-400 dark:text-slate-600 italic">empty in the report</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ============ LONG TEXT ============ -->
+<div class="grid grid-cols-1 gap-4">
+  {% for label, body in long_text %}
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-5">
+    <h3 class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{{ label }}</h3>
+    {% if body %}
+    <pre class="mt-2 text-sm leading-relaxed whitespace-pre-wrap break-words font-sans">{{ body }}</pre>
+    {% else %}
+    <p class="mt-2 text-sm text-slate-400 dark:text-slate-500 italic">
+      The report has no {{ label|lower }} column for this finding.
+      {% if finding.source == 'CIS' and label == 'Description' %}
+      A CIS benchmark export carries ten columns and Description is not one of them —
+      the control statement is the finding's own name and the reasoning sits in
+      Plugin Output above. Nothing has been dropped.
+      {% endif %}
+    </p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ============ STORED RECORD ============ -->
+<div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+  <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+    <h2 class="font-semibold">What the platform stores about it</h2>
+    <p class="text-[12px] text-slate-500 dark:text-slate-400 mt-1">
+      Every field on the finding record, including the ones the interface does not normally show.
+    </p>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-6 p-5">
+    {% for title, fields in groups %}
+    <div class="min-w-0">
+      <h3 class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">{{ title }}</h3>
+      <dl class="space-y-1.5">
+        {% for label, value in fields %}
+        <div class="flex gap-3 text-sm">
+          <dt class="w-40 shrink-0 text-slate-500 dark:text-slate-400">{{ label }}</dt>
+          <dd class="min-w-0 break-words">{% if value %}{{ value }}{% else %}<span class="text-slate-400 dark:text-slate-600">—</span>{% endif %}</dd>
+        </div>
+        {% endfor %}
+      </dl>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ============ ASSET + EXCEPTION ============ -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-5">
+    <h3 class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-3">Asset</h3>
+    {% if asset %}
+    <dl class="space-y-1.5">
+      {% for label, value in [('Code', asset.asset_code), ('Name', asset.name), ('IP', asset.ip_address),
+                              ('Type', asset.type), ('Scope', asset.scope), ('Environment', asset.environment),
+                              ('Site', asset.site), ('Owner', asset.owner_team), ('Status', asset.status), ('Coverage', asset.coverage_state),
+                              ('Last assessed', (asset.last_scanned_at or '')[:10])] %}
+      <div class="flex gap-3 text-sm">
+        <dt class="w-40 shrink-0 text-slate-500 dark:text-slate-400">{{ label }}</dt>
+        <dd class="min-w-0 break-words">{% if value %}{{ value }}{% else %}<span class="text-slate-400 dark:text-slate-600">—</span>{% endif %}</dd>
+      </div>
+      {% endfor %}
+    </dl>
+    {% else %}
+    <p class="text-sm text-slate-400">Unmapped — the inventory does not explain this IP yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-5">
+    <h3 class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-3">Exception</h3>
+    {% if exception %}
+    <dl class="space-y-1.5">
+      {% for label, value in [('Code', exception.exception_code), ('Reason', exception.reason),
+                              ('Control', exception.control_key), ('Source', exception.source),
+                              ('Scope IPs', exception.scope_ips), ('Approval ref', exception.approval_ref),
+                              ('Created by', exception.created_by),
+                              ('Starts', (exception.starts_at or '')[:10]),
+                              ('Expires', (exception.expires_at or '')[:10]),
+                              ('Status', exception.status)] %}
+      <div class="flex gap-3 text-sm">
+        <dt class="w-40 shrink-0 text-slate-500 dark:text-slate-400">{{ label }}</dt>
+        <dd class="min-w-0 break-words">{% if value %}{{ value }}{% else %}<span class="text-slate-400 dark:text-slate-600">—</span>{% endif %}</dd>
+      </div>
+      {% endfor %}
+    </dl>
+    {% if exception.justification %}<p class="text-sm mt-3"><b class="text-slate-500 dark:text-slate-400">Justification</b><br>{{ exception.justification }}</p>{% endif %}
+    {% if exception.compensating_control %}<p class="text-sm mt-2"><b class="text-slate-500 dark:text-slate-400">Compensating control</b><br>{{ exception.compensating_control }}</p>{% endif %}
+    {% else %}
+    <p class="text-sm text-slate-400">No exception covers this finding.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

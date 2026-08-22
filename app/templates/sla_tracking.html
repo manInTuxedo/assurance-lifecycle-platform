@@ -5,7 +5,7 @@
 <div class="flex items-center justify-between">
   <div>
     <h1 class="text-2xl font-bold">SLA Tracking</h1>
-    <p class="text-sm text-slate-400 mt-0.5">Rule-based SLA targets · trend & projected breaches</p>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Where every open finding stands against the SLA the policy gave it</p>
   </div>
   <div class="flex gap-2">
     <button onclick="recalc()" class="text-sm border border-slate-300 dark:border-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">Recalculate All</button>
@@ -13,16 +13,41 @@
   </div>
 </div>
 
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+  <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/50 shadow-sm">
+    <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">SLA Exceeded</div>
+    <div class="mt-1.5 text-2xl font-bold text-red-600 dark:text-red-400" id="cExceeded">0</div>
+    <div class="text-[11px] text-slate-400 mt-0.5">seen after the deadline</div>
+  </div>
+  <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-orange-200 dark:border-orange-900/50 shadow-sm">
+    <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Past Due</div>
+    <div class="mt-1.5 text-2xl font-bold text-orange-600 dark:text-orange-400" id="cPastDue">0</div>
+    <div class="text-[11px] text-slate-400 mt-0.5">deadline passed, not reassessed</div>
+  </div>
+  <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+    <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Approaching</div>
+    <div class="mt-1.5 text-2xl font-bold text-amber-600 dark:text-amber-400" id="cApproaching">0</div>
+  </div>
+  <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+    <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Within SLA</div>
+    <div class="mt-1.5 text-2xl font-bold text-emerald-600 dark:text-emerald-400" id="cWithin">0</div>
+  </div>
+  <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+    <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Under Exception</div>
+    <div class="mt-1.5 text-2xl font-bold text-purple-600 dark:text-purple-400" id="cException">0</div>
+  </div>
+</div>
+
 <!-- ======================= FORECAST ======================= -->
-<div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-  <h2 class="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-1">SLA Breach Forecast <span class="normal-case">(next 14 days)</span></h2>
-  <p class="text-xs text-slate-400 mb-4">Findings whose SLA due-date falls on each day (requires remediation before that date).</p>
+<div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+  <h2 class="font-semibold text-[15px] text-slate-900 dark:text-slate-100 mb-1">SLA Breach Forecast <span class="normal-case">(next 14 days)</span></h2>
+  <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Findings whose SLA due-date falls on each day (requires remediation before that date).</p>
   <div class="h-56"><canvas id="forecastChart"></canvas></div>
 </div>
 
 <!-- ======================= BY DOMAIN ======================= -->
-<div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-  <h2 class="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-4">SLA Status by Responsible Domain</h2>
+<div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+  <h2 class="font-semibold text-[15px] text-slate-900 dark:text-slate-100 mb-4">SLA Status by Technical Domain</h2>
   <div class="h-56"><canvas id="domainChart"></canvas></div>
 </div>
 
@@ -42,17 +67,18 @@
     </div>
     <div id="appList" class="max-h-[420px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800"></div>
   </div>
-  <div class="rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/30 overflow-hidden">
-    <div class="px-4 py-3 bg-emerald-500/10 border-b border-emerald-500/30 flex items-center justify-between">
-      <h3 class="font-bold text-sm text-emerald-500">Within SLA</h3>
-      <span id="winCount" class="text-xs bg-emerald-500/20 text-emerald-500 px-2 py-0.5 rounded-full font-bold">0</span>
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-orange-400/30 overflow-hidden">
+    <div class="px-4 py-3 bg-orange-400/10 border-b border-orange-400/30 flex items-center justify-between">
+      <h3 class="font-bold text-sm text-orange-600 dark:text-orange-400">Past Due — not reassessed</h3>
+      <span id="pdCount" class="text-xs bg-orange-400/20 text-orange-600 dark:text-orange-400 px-2 py-0.5 rounded-full font-bold">0</span>
     </div>
-    <div id="winList" class="max-h-[420px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800"></div>
+    <div id="pdList" class="max-h-[420px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800"></div>
   </div>
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
+  var _forecastChart, _domainChart, _valChart;
   var chartTxt = window.__theme === 'light' ? '#475569' : '#94a3b8';
   function liHTML(f) {
     return '<div class="px-4 py-3 flex items-center justify-between">' +
@@ -64,15 +90,27 @@
   }
   function load() {
     api('/api/sla-tracking').then(function (d) {
-      ['exc', 'app', 'win'].forEach(function (pfx) {
-        var key = { exc: 'exceeded', app: 'approaching', win: 'within' }[pfx];
-        document.getElementById(pfx + 'Count').textContent = d[key].length;
+      document.getElementById('cExceeded').textContent = d.counts.exceeded.toLocaleString();
+      document.getElementById('cPastDue').textContent = d.counts.past_due.toLocaleString();
+      document.getElementById('cApproaching').textContent = d.counts.approaching.toLocaleString();
+      document.getElementById('cWithin').textContent = d.counts.within.toLocaleString();
+      document.getElementById('cException').textContent = d.counts.exception.toLocaleString();
+      ['exc', 'app', 'pd'].forEach(function (pfx) {
+        var key = { exc: 'exceeded', app: 'approaching', pd: 'past_due' }[pfx];
+        var total = d.counts[key];
+        // The column shows the most urgent rows, so it says what it is not showing.
+        document.getElementById(pfx + 'Count').textContent =
+          total > d[key].length ? (d[key].length + ' of ' + total.toLocaleString()) : total;
         var el = document.getElementById(pfx + 'List');
-        el.innerHTML = d[key].length ? d[key].map(liHTML).join('') :
-          '<div class="px-4 py-6 text-center text-xs text-slate-400">None</div>';
+        el.innerHTML = (d[key].length ? d[key].map(liHTML).join('') :
+          '<div class="px-4 py-6 text-center text-xs text-slate-400">None</div>') +
+          (total > d[key].length ? '<div class="px-4 py-3 text-center text-[11px] text-slate-400">' +
+            'Showing the ' + d[key].length + ' closest to their due date — <a class="text-blue-500 hover:underline" href="/findings?sla_status=' +
+            encodeURIComponent({ exc: 'SLA Exceeded', app: 'Approaching SLA', pd: 'Past Due' }[pfx]) +
+            '">open the full list</a></div>' : '');
       });
-      if (window.forecastChart) window.forecastChart.destroy();
-      window.forecastChart = new Chart(document.getElementById('forecastChart'), {
+      if (_forecastChart) _forecastChart.destroy();
+      _forecastChart = new Chart(document.getElementById('forecastChart'), {
         type: 'bar',
         data: { labels: d.forecast.labels,
           datasets: [{ label: 'Findings due', data: d.forecast.values, backgroundColor: 'rgba(239,68,68,0.65)', borderRadius: 4 }] },
@@ -81,12 +119,13 @@
           scales: { x: { ticks: { color: chartTxt, font: { size: 10 } }, grid: { display: false } },
             y: { ticks: { color: chartTxt, font: { size: 10 }, precision: 0 }, grid: { color: 'rgba(148,163,184,0.1)' } } } },
       });
-      if (window.domainChart) window.domainChart.destroy();
-      window.domainChart = new Chart(document.getElementById('domainChart'), {
+      if (_domainChart) _domainChart.destroy();
+      _domainChart = new Chart(document.getElementById('domainChart'), {
         type: 'bar',
         data: { labels: d.by_domain.labels,
           datasets: [
             { label: 'SLA Exceeded', data: d.by_domain.exceeded, backgroundColor: '#ef4444', borderRadius: 3 },
+            { label: 'Past Due', data: d.by_domain.past_due, backgroundColor: '#f97316', borderRadius: 3 },
             { label: 'Approaching', data: d.by_domain.approaching, backgroundColor: '#f59e0b', borderRadius: 3 },
             { label: 'Within SLA', data: d.by_domain.within, backgroundColor: '#10b981', borderRadius: 3 },
             { label: 'Under Exception', data: d.by_domain.exception, backgroundColor: '#a855f7', borderRadius: 3 },

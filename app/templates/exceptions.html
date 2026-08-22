@@ -2,100 +2,336 @@
 {% block title %}Exceptions · Assurance Platform{% endblock %}
 {% block content %}
 
-<div class="flex flex-wrap items-center justify-between gap-3">
+<div class="flex flex-wrap items-end justify-between gap-3">
   <div>
-    <h1 class="text-2xl font-bold">Exceptions</h1>
-    <p class="text-sm text-slate-400 mt-0.5">Compensating controls, accepted risks and vendor roadmap items</p>
+    <h1 class="text-2xl font-bold tracking-tight">Exceptions</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+      A technical decision to let a finding stay open past its SLA — recorded against a control, with a justification and an end date.
+    </p>
   </div>
-  <button onclick="openExc()" class="text-sm px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition shadow" {{ 'hidden' if current_user.role == 'read_only' }}>+ Add Exception</button>
+  {% if can_write %}
+  <button onclick="openWizard()" class="text-sm px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition shadow-sm">+ New Exception</button>
+  {% endif %}
 </div>
 
-<div class="overflow-x-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+  <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+    <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Active</div>
+    <div class="mt-1.5 text-2xl font-bold text-emerald-600 dark:text-emerald-400" id="kActive">0</div>
+  </div>
+  <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+    <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Standing (control-level)</div>
+    <div class="mt-1.5 text-2xl font-bold text-purple-600 dark:text-purple-400" id="kStanding">0</div>
+    <div class="text-[11px] text-slate-400 mt-0.5">applied to future occurrences</div>
+  </div>
+  <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+    <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Expired</div>
+    <div class="mt-1.5 text-2xl font-bold text-slate-500" id="kExpired">0</div>
+  </div>
+  <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+    <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Total recorded</div>
+    <div class="mt-1.5 text-2xl font-bold" id="kTotal">0</div>
+  </div>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+  <input id="fQ" placeholder="Search code / control / approval ref" class="flt col-span-2">
+  <select id="fStatus" class="flt">
+    <option value="">Status: All</option><option>Active</option><option>Expired</option><option>Revoked</option>
+  </select>
+  <select id="pageSize" class="flt"><option>25</option><option>50</option><option>100</option></select>
+</div>
+
+<div class="overflow-x-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
   <table class="w-full text-sm">
     <thead class="bg-slate-50 dark:bg-slate-800/50 text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-700">
       <tr>
-        <th class="py-3 px-4">Exception Code</th><th class="py-3 px-3">Finding</th><th class="py-3 px-3">Severity</th>
-        <th class="py-3 px-3">Reason</th><th class="py-3 px-3">Expires At</th><th class="py-3 px-3">Status</th><th class="py-3 px-3">Requested By</th>
+        <th class="py-3 px-4">Code</th><th class="py-3 px-3">Control / Finding</th><th class="py-3 px-3">Asset</th>
+        <th class="py-3 px-3">Reason</th><th class="py-3 px-3">Window</th><th class="py-3 px-3">Approval</th>
+        <th class="py-3 px-3">Status</th><th class="py-3 px-3">Created by</th><th class="py-3 px-3"></th>
       </tr>
     </thead>
     <tbody id="excBody"></tbody>
   </table>
-  <div id="excEmpty" class="hidden py-10 text-center text-slate-400 text-sm">No exceptions recorded.</div>
+  <div id="excEmpty" class="hidden py-10 text-center text-slate-400 text-sm">No exceptions recorded yet.</div>
+  <div class="flex items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 dark:border-slate-800">
+    <span class="text-[12px] text-slate-500 dark:text-slate-400" id="pageInfo">—</span>
+    <div class="flex items-center gap-2">
+      <button id="pagePrev" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-sm disabled:opacity-40">Prev</button>
+      <span class="text-[12px] font-semibold" id="pageLabel">1 / 1</span>
+      <button id="pageNext" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-sm disabled:opacity-40">Next</button>
+    </div>
+  </div>
 </div>
 
-<div id="excModal" class="fixed inset-0 z-50 hidden items-center justify-center">
-  <div class="absolute inset-0 bg-black/60" onclick="closeExc()"></div>
-  <div class="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 w-full max-w-md shadow-2xl">
-    <h3 class="font-bold text-lg mb-4">Add Exception</h3>
-    <form id="excForm" class="space-y-4">
+<!-- ======================= WIZARD ======================= -->
+<div id="wizard" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/60" onclick="closeWizard()"></div>
+  <div class="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 w-full max-w-3xl shadow-2xl max-h-[92vh] flex flex-col">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
       <div>
-        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Finding ID</label>
-        <input id="eFinding" type="number" required placeholder="e.g. 12" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+        <h3 class="font-bold text-lg">New Exception</h3>
+        <p class="text-[12px] text-slate-500 dark:text-slate-400" id="wizStepLabel">Step 1 of 3 — choose the control</p>
       </div>
-      <div>
-        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Reason</label>
-        <select id="eReason" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
-          <option>Compensating Control</option><option>Risk Accepted</option><option>Vendor Roadmap</option>
-        </select>
+      <button class="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xl leading-none" onclick="closeWizard()">&times;</button>
+    </div>
+
+    <div class="px-6 py-4 overflow-y-auto flex-1">
+      <!-- step 1 -->
+      <div data-step="1">
+        <input id="ctlSearch" placeholder="Search a control or plugin name…" class="flt mb-3">
+        <div id="ctlList" class="space-y-1.5 max-h-80 overflow-y-auto"></div>
       </div>
-      <div>
-        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Expires At (optional)</label>
-        <input id="eExp" type="date" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">
+
+      <!-- step 2 -->
+      <div data-step="2" class="hidden">
+        <div class="rounded-lg bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5 mb-3">
+          <div class="text-[11px] uppercase tracking-wide text-slate-400">Control</div>
+          <div class="font-semibold text-sm" id="ctlChosen"></div>
+        </div>
+        <div class="flex flex-wrap items-center gap-4 mb-3 text-sm">
+          <label class="flex items-center gap-2"><input type="checkbox" id="optAll"> Apply to every host this control is currently failing on</label>
+          <label class="flex items-center gap-2"><input type="checkbox" id="optFuture"> Apply to future occurrences too</label>
+        </div>
+        <div class="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div class="max-h-72 overflow-y-auto">
+            <table class="w-full text-[12px]">
+              <thead class="bg-slate-50 dark:bg-slate-800/50 text-left text-[10px] uppercase tracking-wider text-slate-400 sticky top-0">
+                <tr><th class="py-2 pl-3 w-8"><input type="checkbox" id="tgtAll"></th><th class="py-2 px-2">IP</th>
+                <th class="py-2 px-2">Asset</th><th class="py-2 px-2">Scope</th><th class="py-2 px-2">Port</th><th class="py-2 px-2">SLA</th></tr>
+              </thead>
+              <tbody id="tgtBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-2" id="tgtCount"></p>
       </div>
-      <button class="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold">Create Exception</button>
-    </form>
-    <div id="excResult" class="hidden mt-3 text-sm"></div>
+
+      <!-- step 3 -->
+      <div data-step="3" class="hidden space-y-3">
+        <div>
+          <label class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Technical reason</label>
+          <select id="eReason" class="flt"></select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Justification <span class="text-red-500">*</span></label>
+          <textarea id="eJust" rows="3" class="flt" placeholder="Why can this not be remediated inside the SLA?"></textarea>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Compensating control</label>
+          <input id="eComp" class="flt" placeholder="What reduces the exposure in the meantime?">
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div><label class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Approval reference</label><input id="eRef" class="flt" placeholder="CHG-2026-0187"></div>
+          <div><label class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Starts</label><input id="eStart" type="date" class="flt"></div>
+          <div><label class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Expires</label><input id="eExp" type="date" class="flt"></div>
+        </div>
+        <div class="rounded-lg border border-amber-400/40 bg-amber-50 dark:bg-amber-500/10 px-3 py-2.5 text-[12px] text-amber-800 dark:text-amber-300">
+          The SLA clock is not paused. The finding is reported as <b>Under Exception</b>, but its age keeps running, so the day the exception ends its true SLA position is already there.
+        </div>
+        <div id="wizSummary" class="text-[12px] text-slate-500 dark:text-slate-400"></div>
+      </div>
+    </div>
+
+    <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <button id="wizBack" class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-sm disabled:opacity-40">Back</button>
+      <div id="wizError" class="text-[12px] text-red-500"></div>
+      <button id="wizNext" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold disabled:opacity-40">Next</button>
+    </div>
   </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
+  var page = 1, pages = 1, REASONS = [];
+  var wiz = { step: 1, control: null, source: null, targets: [], selected: new Set() };
+
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) {
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+
+  function statusChip(s) {
+    var map = { Active: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+      Expired: 'bg-slate-500/10 text-slate-500 border-slate-500/30',
+      Revoked: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30' };
+    return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold border ' + (map[s] || map.Expired) + '">' + esc(s) + '</span>';
+  }
+
   function load() {
-    api('/api/exceptions').then(function (d) {
-      var tb = document.getElementById('excBody');
+    var p = new URLSearchParams({ page: page, page_size: document.getElementById('pageSize').value });
+    if (document.getElementById('fQ').value.trim()) p.set('q', document.getElementById('fQ').value.trim());
+    if (document.getElementById('fStatus').value) p.set('status', document.getElementById('fStatus').value);
+    api('/api/exceptions?' + p.toString()).then(function (d) {
+      REASONS = d.reasons;
+      document.getElementById('kActive').textContent = d.active;
+      document.getElementById('kStanding').textContent = d.standing;
+      document.getElementById('kExpired').textContent = d.expired;
+      document.getElementById('kTotal').textContent = d.total;
+      page = d.page; pages = d.pages;
+      document.getElementById('pageLabel').textContent = d.page + ' / ' + d.pages;
+      document.getElementById('pageInfo').textContent = d.total + ' exception records';
+      document.getElementById('pagePrev').disabled = d.page <= 1;
+      document.getElementById('pageNext').disabled = d.page >= d.pages;
       document.getElementById('excEmpty').classList.toggle('hidden', d.exceptions.length > 0);
-      tb.innerHTML = d.exceptions.map(function (e) {
-        var st = e.status === 'Active' ?
-          '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">Active</span>' :
-          '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/30">Expired</span>';
-        var sev = { Critical: 'text-red-500', High: 'text-orange-500', Medium: 'text-amber-500', Low: 'text-sky-500', Info: 'text-slate-400' }[e.severity] || '';
+      document.getElementById('excBody').innerHTML = d.exceptions.map(function (e) {
+        var window_ = (e.starts_at ? e.starts_at.slice(0, 10) : '—') + ' → ' + (e.expires_at ? e.expires_at.slice(0, 10) : 'no expiry');
         return '<tr class="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40">' +
-          '<td class="py-3 px-4 font-mono font-semibold text-purple-400">' + e.exception_code + '</td>' +
-          '<td class="py-3 px-3"><a href="/findings" class="font-medium hover:text-blue-400">' + (e.finding_code || 'FND-?') + '</a><div class="text-xs text-slate-400 max-w-[220px] truncate">' + (e.plugin_name || '') + '</div></td>' +
-          '<td class="py-3 px-3 font-semibold ' + sev + '">' + (e.severity || '—') + '</td>' +
-          '<td class="py-3 px-3 text-xs">' + e.reason + '</td>' +
-          '<td class="py-3 px-3 text-xs">' + (e.expires_at ? e.expires_at.slice(0, 10) : 'No expiry') + '</td>' +
-          '<td class="py-3 px-3">' + st + '</td>' +
-          '<td class="py-3 px-3 text-xs">' + (e.created_by || '—') + '</td></tr>';
+          '<td class="py-3 px-4 font-mono font-semibold text-purple-600 dark:text-purple-400">' + esc(e.exception_code) +
+          (e.is_template ? '<div class="text-[10px] uppercase font-bold text-purple-500 mt-0.5">standing</div>' : '') + '</td>' +
+          '<td class="py-3 px-3"><div class="max-w-[240px] truncate">' + esc(e.plugin_name || '—') + '</div>' +
+          '<div class="text-[11px] text-slate-400">' + esc(e.finding_code || (e.applies_to_future ? 'future occurrences' : '—')) + '</div></td>' +
+          '<td class="py-3 px-3 text-xs">' + esc(e.asset || '—') + '<div class="text-slate-400">' + esc(e.ip_address || '') + '</div></td>' +
+          '<td class="py-3 px-3 text-xs">' + esc(e.reason) + '<div class="text-[11px] text-slate-400 max-w-[220px] truncate">' + esc(e.justification || '') + '</div></td>' +
+          '<td class="py-3 px-3 text-xs">' + window_ + '</td>' +
+          '<td class="py-3 px-3 text-xs font-mono">' + esc(e.approval_ref || '—') + '</td>' +
+          '<td class="py-3 px-3">' + statusChip(e.status) + '</td>' +
+          '<td class="py-3 px-3 text-xs">' + esc(e.created_by || '—') + '</td>' +
+          '<td class="py-3 px-3 text-right">' + (e.status === 'Active'
+            ? '<button data-revoke="' + e.id + '" class="text-[11px] px-2 py-1 rounded border border-red-400/40 text-red-500 hover:bg-red-500/10">Revoke</button>' : '') + '</td></tr>';
       }).join('');
+      document.querySelectorAll('[data-revoke]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          api('/api/exceptions/' + b.dataset.revoke + '/revoke', { method: 'POST', body: '{}' })
+            .then(function () { toast('Exception revoked', true); load(); })
+            .catch(function (e) { toast(e.message, false); });
+        });
+      });
+    }).catch(function (e) { toast(e.message, false); });
+  }
+
+  ['fQ', 'fStatus', 'pageSize'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', function () { page = 1; load(); });
+  });
+  document.getElementById('pagePrev').addEventListener('click', function () { if (page > 1) { page--; load(); } });
+  document.getElementById('pageNext').addEventListener('click', function () { if (page < pages) { page++; load(); } });
+
+  // ---------------- wizard ----------------
+  function showStep(n) {
+    wiz.step = n;
+    [1, 2, 3].forEach(function (i) {
+      document.querySelector('[data-step="' + i + '"]').classList.toggle('hidden', i !== n);
+    });
+    document.getElementById('wizStepLabel').textContent =
+      'Step ' + n + ' of 3 — ' + ['choose the control', 'choose the hosts', 'record the decision'][n - 1];
+    document.getElementById('wizBack').disabled = n === 1;
+    document.getElementById('wizNext').textContent = n === 3 ? 'Create exception' : 'Next';
+    document.getElementById('wizError').textContent = '';
+  }
+
+  function loadControls() {
+    var q = document.getElementById('ctlSearch').value.trim();
+    api('/api/exceptions/controls' + (q ? '?q=' + encodeURIComponent(q) : '')).then(function (d) {
+      document.getElementById('ctlList').innerHTML = d.controls.length ? d.controls.map(function (c) {
+        return '<button data-ctl="' + encodeURIComponent(c.plugin_name) + '" data-src="' + c.source + '" ' +
+          'class="w-full text-left px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-purple-400 hover:bg-purple-500/5 transition">' +
+          '<div class="text-sm font-medium truncate">' + esc(c.plugin_name) + '</div>' +
+          '<div class="text-[11px] text-slate-400">' + c.source + ' · open on ' + c.hosts + ' hosts · ' + c.findings + ' findings</div></button>';
+      }).join('') : '<p class="text-sm text-slate-400 py-6 text-center">No open control matches that search.</p>';
+      document.querySelectorAll('[data-ctl]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          wiz.control = decodeURIComponent(b.dataset.ctl);
+          wiz.source = b.dataset.src;
+          document.getElementById('ctlChosen').textContent = wiz.control + '  (' + wiz.source + ')';
+          loadTargets();
+          showStep(2);
+        });
+      });
     });
   }
-  function openExc() {
-    document.getElementById('excModal').classList.remove('hidden');
-    document.getElementById('excModal').classList.add('flex');
+
+  function loadTargets() {
+    api('/api/exceptions/targets?control=' + encodeURIComponent(wiz.control) + '&source=' + wiz.source).then(function (d) {
+      wiz.targets = d.targets;
+      wiz.selected = new Set();
+      document.getElementById('tgtCount').textContent =
+        d.count + ' hosts currently fail this control. Tick the ones the decision covers.';
+      document.getElementById('tgtBody').innerHTML = d.targets.map(function (t) {
+        return '<tr class="border-b border-slate-100 dark:border-slate-800/60">' +
+          '<td class="py-1.5 pl-3"><input type="checkbox" class="tgt" value="' + t.id + '" ' + (t.already_excepted ? 'disabled' : '') + '></td>' +
+          '<td class="py-1.5 px-2 font-mono">' + esc(t.ip_address) + '</td>' +
+          '<td class="py-1.5 px-2 truncate max-w-[200px]">' + esc(t.asset) + '</td>' +
+          '<td class="py-1.5 px-2 text-slate-400 truncate max-w-[150px]">' + esc(t.scope) + '</td>' +
+          '<td class="py-1.5 px-2">' + (t.port || '—') + '</td>' +
+          '<td class="py-1.5 px-2 text-slate-400">' + esc(t.already_excepted ? 'already excepted' : t.sla_status) + '</td></tr>';
+      }).join('');
+      document.querySelectorAll('.tgt').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+          if (cb.checked) wiz.selected.add(+cb.value); else wiz.selected.delete(+cb.value);
+        });
+      });
+    });
   }
-  function closeExc() {
-    document.getElementById('excModal').classList.add('hidden');
-    document.getElementById('excModal').classList.remove('flex');
-  }
-  window.openExc = openExc; window.closeExc = closeExc;
-  document.getElementById('excForm').addEventListener('submit', function (e) {
-    e.preventDefault();
-    api('/api/exceptions', { method: 'POST', body: JSON.stringify({
-      finding_id: +document.getElementById('eFinding').value,
-      reason: document.getElementById('eReason').value,
-      expires_at: document.getElementById('eExp').value,
-    }) }).then(function (d) {
-      var box = document.getElementById('excResult');
-      box.classList.remove('hidden');
-      box.innerHTML = '<div class="rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-sm text-emerald-500">Created ' + d.exception.exception_code + ' — finding moved to Under Exception.</div>';
-      load();
-    }).catch(function (err) {
-      var box = document.getElementById('excResult');
-      box.classList.remove('hidden');
-      box.innerHTML = '<div class="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-500">' + err.message + '</div>';
+
+  document.getElementById('tgtAll').addEventListener('change', function (e) {
+    wiz.selected = new Set();
+    document.querySelectorAll('.tgt').forEach(function (cb) {
+      if (cb.disabled) return;
+      cb.checked = e.target.checked;
+      if (e.target.checked) wiz.selected.add(+cb.value);
     });
   });
+  document.getElementById('ctlSearch').addEventListener('input', function () {
+    clearTimeout(window.__ctlT); window.__ctlT = setTimeout(loadControls, 300);
+  });
+
+  document.getElementById('wizBack').addEventListener('click', function () {
+    if (wiz.step > 1) showStep(wiz.step - 1);
+  });
+
+  document.getElementById('wizNext').addEventListener('click', function () {
+    var err = document.getElementById('wizError');
+    if (wiz.step === 1) {
+      if (!wiz.control) { err.textContent = 'Pick a control first.'; return; }
+      showStep(2); return;
+    }
+    if (wiz.step === 2) {
+      if (!document.getElementById('optAll').checked && wiz.selected.size === 0) {
+        err.textContent = 'Tick at least one host, or choose "every host".'; return;
+      }
+      document.getElementById('eReason').innerHTML = REASONS.map(function (r) { return '<option>' + r + '</option>'; }).join('');
+      document.getElementById('wizSummary').textContent =
+        'This will cover ' + (document.getElementById('optAll').checked
+          ? 'all ' + wiz.targets.length + ' hosts currently failing' : wiz.selected.size + ' selected host(s)') +
+        (document.getElementById('optFuture').checked ? ', plus future occurrences of this control.' : '.');
+      showStep(3); return;
+    }
+    var body = {
+      control: wiz.control,
+      source: wiz.source,
+      all_current: document.getElementById('optAll').checked,
+      applies_to_future: document.getElementById('optFuture').checked,
+      finding_ids: Array.from(wiz.selected),
+      reason: document.getElementById('eReason').value,
+      justification: document.getElementById('eJust').value,
+      compensating_control: document.getElementById('eComp').value,
+      approval_ref: document.getElementById('eRef').value,
+      starts_at: document.getElementById('eStart').value,
+      expires_at: document.getElementById('eExp').value
+    };
+    api('/api/exceptions/scoped', { method: 'POST', body: JSON.stringify(body) }).then(function (d) {
+      toast('Exception applied to ' + d.applied + ' finding(s)' + (d.template ? ' + standing record ' + d.template : ''), true);
+      closeWizard();
+      load();
+    }).catch(function (e) { err.textContent = e.message; });
+  });
+
+  function openWizard() {
+    wiz = { step: 1, control: null, source: null, targets: [], selected: new Set() };
+    document.getElementById('ctlSearch').value = '';
+    document.getElementById('optAll').checked = false;
+    document.getElementById('optFuture').checked = false;
+    ['eJust', 'eComp', 'eRef', 'eStart', 'eExp'].forEach(function (id) { document.getElementById(id).value = ''; });
+    loadControls();
+    showStep(1);
+    var w = document.getElementById('wizard');
+    w.classList.remove('hidden'); w.classList.add('flex');
+  }
+  function closeWizard() {
+    var w = document.getElementById('wizard');
+    w.classList.add('hidden'); w.classList.remove('flex');
+  }
+  window.openWizard = openWizard; window.closeWizard = closeWizard;
+
   load();
 </script>
 {% endblock %}

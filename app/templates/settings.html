@@ -2,20 +2,40 @@
 {% block title %}Settings · SLA Policy · Assurance Platform{% endblock %}
 {% block content %}
 
-<div class="flex flex-wrap items-center justify-between gap-3">
+<div class="flex flex-wrap items-end justify-between gap-3">
   <div>
-    <h1 class="text-2xl font-bold">SLA Policy Rules</h1>
-    <p class="text-sm text-slate-400 mt-0.5">Firewall-style — rules are evaluated top-to-bottom, <b class="text-blue-400">first match wins</b>.</p>
+    <h1 class="text-2xl font-bold tracking-tight">Settings</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">SLA policy and who is allowed to see or change each page.</p>
   </div>
-  <div class="flex gap-2">
+  <div class="flex gap-2" id="policyActions">
     <button onclick="recalc()" class="text-sm border border-slate-300 dark:border-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">Recalculate</button>
-    <button onclick="openAddRule()" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow">+ Add Rule</button>
+    <button onclick="openAddRule()" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">+ Add Rule</button>
   </div>
+  {% if current_user.role == 'admin' %}
+  <div class="flex gap-2 hidden" id="userActions">
+    <button onclick="openAddUser()" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">+ Add User</button>
+  </div>
+  {% endif %}
 </div>
 
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+<div class="flex gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/60 w-fit">
+  <button class="tab px-4 py-2 rounded-lg text-sm font-medium" data-tab="policy">SLA Policy</button>
+  {% if current_user.role == 'admin' %}
+  <button class="tab px-4 py-2 rounded-lg text-sm font-medium" data-tab="users">Users &amp; Access</button>
+  <button class="tab px-4 py-2 rounded-lg text-sm font-medium" data-tab="maintenance">Maintenance</button>
+  {% endif %}
+</div>
+
+<div class="rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-500/10 px-4 py-3 text-[12.5px] text-blue-900 dark:text-blue-200" data-pane="policy">
+  Rules are read top to bottom and the <b>first match wins</b>, exactly like a firewall policy.
+  The bottom rule is the catch-all: it cannot be deleted or moved, because it is what guarantees
+  every finding gets an SLA. Any change here — add, edit, reorder, enable, delete — recalculates
+  every finding immediately.
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6" data-pane="policy">
   <!-- ======================= RULES TABLE ======================= -->
-  <div class="xl:col-span-2 overflow-x-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+  <div class="xl:col-span-2 overflow-x-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
     <table class="w-full text-sm">
       <thead class="bg-slate-50 dark:bg-slate-800/50 text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-700">
         <tr>
@@ -23,20 +43,22 @@
           <th class="py-3 px-2">Source</th><th class="py-3 px-2">Severity</th><th class="py-3 px-2">Scope</th>
           <th class="py-3 px-2">Type</th><th class="py-3 px-2">Env</th>
           <th class="py-3 px-2 text-right">SLA Days</th><th class="py-3 px-2 text-right">Approach%</th><th class="py-3 px-2 text-right">Retest%</th>
-          <th class="py-3 px-3 text-center">Order</th>
+          <th class="py-3 px-2 text-right">Matches</th>
+          <th class="py-3 px-3 text-center">Order</th><th class="py-3 px-2"></th>
         </tr>
       </thead>
       <tbody id="rulesBody"></tbody>
     </table>
     <div id="rulesEmpty" class="hidden py-10 text-center text-slate-400 text-sm">No SLA rules defined.</div>
+    <div id="rulesNote" class="px-4 py-3 text-[12px] text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800"></div>
   </div>
 
   <!-- ======================= RIGHT COLUMN ======================= -->
   <div class="space-y-6">
     <!-- Rule Simulator -->
-    <div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-      <h3 class="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-4">Rule Simulator</h3>
-      <p class="text-xs text-slate-400 mb-4">Pick a scenario and see which rule applies first (and the resulting due date).</p>
+    <div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <h3 class="font-semibold text-[15px] text-slate-900 dark:text-slate-100 mb-4">Rule Simulator</h3>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Pick a scenario and see which rule applies first (and the resulting due date).</p>
       <div class="space-y-3">
         <div>
           <label class="block text-[11px] uppercase text-slate-400 mb-1">Source</label>
@@ -74,14 +96,146 @@
     </div>
 
     <!-- Policy Change Log -->
-    <div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+    <div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="font-semibold text-sm uppercase tracking-wide text-slate-400">Policy Change Log</h3>
+        <h3 class="font-semibold text-[15px] text-slate-900 dark:text-slate-100">Policy Change Log</h3>
         <button onclick="loadLog()" class="text-xs text-blue-500 hover:underline">Refresh</button>
       </div>
       <div id="logList" class="space-y-2 max-h-64 overflow-y-auto"></div>
     </div>
   </div>
+</div>
+
+{% if current_user.role == 'admin' %}
+<!-- ======================= USERS ======================= -->
+<div data-pane="users" class="hidden space-y-5">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Accounts</div>
+      <div class="mt-1.5 text-2xl font-bold" id="uTotal">0</div>
+    </div>
+    <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Administrators</div>
+      <div class="mt-1.5 text-2xl font-bold text-blue-600 dark:text-blue-400" id="uAdmins">0</div>
+    </div>
+    <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Active</div>
+      <div class="mt-1.5 text-2xl font-bold text-emerald-600 dark:text-emerald-400" id="uActive">0</div>
+    </div>
+    <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Disabled</div>
+      <div class="mt-1.5 text-2xl font-bold text-slate-500" id="uDisabled">0</div>
+    </div>
+  </div>
+
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+      <h3 class="font-semibold text-[15px]">Access matrix</h3>
+      <p class="text-[12px] text-slate-500 dark:text-slate-400 mt-1">
+        Every page can be set to no access, view only, or view and edit. Changes save as soon as you pick a level.
+      </p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 dark:bg-slate-800/50 text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-700">
+          <tr id="userHead"><th class="py-3 px-4">User</th></tr>
+        </thead>
+        <tbody id="userBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Which data an account can reach at all - a different question from
+       which pages it can open. -->
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+      <h3 class="font-semibold text-[15px]">Data reach</h3>
+      <p class="text-[12.5px] text-slate-500 dark:text-slate-400 mt-1 max-w-3xl">
+        The access matrix above decides which pages an account can open. This decides what is
+        inside them. Anything left unticked does not exist for that account: it is not listed,
+        counted, charted, searched or exported, and a report row about it is ignored on upload
+        rather than refused. Administrators reach everything and are not listed here.
+      </p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 dark:bg-slate-800/50 text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-700">
+          <tr>
+            <th class="py-3 px-4">User</th>
+            <th class="py-3 px-4">Business scopes</th>
+            <th class="py-3 px-4">Assessments</th>
+          </tr>
+        </thead>
+        <tbody id="reachBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if current_user.role == 'admin' %}
+<!-- ======================= MAINTENANCE ======================= -->
+<div data-pane="maintenance" class="hidden space-y-5">
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-5">
+    <h3 class="font-semibold text-[15px]">Where the platform stands</h3>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4" id="mStats"></div>
+  </div>
+
+  <div class="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/60 dark:bg-red-500/5 p-5">
+    <div class="flex items-start gap-3">
+      <span class="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/>
+        </svg>
+      </span>
+      <div>
+        <h3 class="font-semibold text-[15px] text-red-900 dark:text-red-200">Reset the platform</h3>
+        <p class="text-[12.5px] text-red-900/80 dark:text-red-200/80 mt-1 leading-relaxed max-w-2xl">
+          For starting a test run from nothing. Only an administrator sees this, and every reset asks
+          you to type the word first. <b>User accounts are never deleted</b> — a reset must not lock
+          you out of your own platform.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-5">
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 flex flex-col">
+        <div class="font-semibold text-sm">Assessment history</div>
+        <p class="text-[12px] text-slate-500 dark:text-slate-400 mt-1 flex-1">
+          Deletes every finding, exception and uploaded assessment. The asset inventory, the SLA
+          policy and the accounts stay, so the next upload lands on assets that are already known.
+        </p>
+        <button onclick="resetData('findings')" class="mt-3 text-sm py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium">Clear findings</button>
+      </div>
+
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 flex flex-col">
+        <div class="font-semibold text-sm">History and inventory</div>
+        <p class="text-[12px] text-slate-500 dark:text-slate-400 mt-1 flex-1">
+          The above, plus the asset register. The inventory file on disk is loaded again straight
+          after, so you are back to assets with no findings.
+        </p>
+        <button onclick="resetData('assets')" class="mt-3 text-sm py-2 rounded-lg border border-amber-400/60 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 font-medium">Clear findings and assets</button>
+      </div>
+
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-red-300 dark:border-red-900/60 p-4 flex flex-col">
+        <div class="font-semibold text-sm text-red-700 dark:text-red-400">Factory reset</div>
+        <p class="text-[12px] text-slate-500 dark:text-slate-400 mt-1 flex-1">
+          Everything: findings, exceptions, assessments, assets, the SLA policy and the change log.
+          The default policy is seeded again and the inventory is reloaded. Accounts are kept.
+        </p>
+        <button onclick="resetData('all')" class="mt-3 text-sm py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold">Reset everything</button>
+      </div>
+    </div>
+
+    <div id="resetResult" class="hidden mt-4"></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Add user modal -->
+<div id="userModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/60" onclick="closeUserModal()"></div>
+  <div class="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" id="userModalBody"></div>
 </div>
 
 <!-- Add rule modal -->
@@ -93,12 +247,41 @@
 {% block scripts %}
 <script>
   var rules = [];
-  function sel(id, opts) { return '<select id="' + id + '" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none">' + opts.map(function (o) { return '<option>' + o + '</option>'; }).join('') + '</select>'; }
-  function opt(v) { return '<option value="' + v + '">' + v + '</option>'; }
+  // Rule dimensions come from the data, so a rule can never be written against
+  // a scope, type or environment that does not exist in the inventory.
+  var DIM = { scopes: ['Any'], types: ['Any'], environments: ['Any'],
+              severities: ['Critical', 'High', 'Medium', 'Low', 'Info', 'Any'],
+              sources: ['Any'] };
 
+  function sel(id, opts) {
+    return '<select id="' + id + '" class="flt">' +
+      opts.map(function (o) { return '<option>' + o + '</option>'; }).join('') + '</select>';
+  }
+  function fillSimulator() {
+    [['simSource', 'sources'], ['simSeverity', 'severities'], ['simScope', 'scopes'],
+     ['simType', 'types'], ['simEnv', 'environments']].forEach(function (p) {
+      document.getElementById(p[0]).innerHTML =
+        DIM[p[1]].map(function (o) { return '<option>' + o + '</option>'; }).join('');
+    });
+  }
+  function loadDimensions() {
+    return api('/api/filters').then(function (d) {
+      DIM.scopes = d.scopes.concat(['Any']);
+      DIM.types = d.types.concat(['Any']);
+      DIM.environments = d.environments.concat(['Any']);
+      // The policy can be written against any assessment the platform knows,
+      // so the list comes from the platform rather than from this file - a
+      // new assessment type turns up here on its own.
+      DIM.sources = (d.all_sources || d.sources || []).concat(['Any']);
+      fillSimulator();
+    }).catch(function () { fillSimulator(); });
+  }
+
+  var CATCH_ALL = null;
   function loadRules() {
     api('/api/sla-rules').then(function (d) {
       rules = d.rules;
+      CATCH_ALL = d.catch_all_id;
       var tb = document.getElementById('rulesBody');
       document.getElementById('rulesEmpty').classList.toggle('hidden', rules.length > 0);
       tb.innerHTML = rules.map(function (r) {
@@ -114,19 +297,42 @@
           '<td class="py-3 px-2 text-right font-bold">' + r.sla_days + '</td>' +
           '<td class="py-3 px-2 text-right">' + r.approaching_pct + '%</td>' +
           '<td class="py-3 px-2 text-right">' + r.retest_pct + '%</td>' +
+          '<td class="py-3 px-2 text-right text-slate-500 dark:text-slate-400">' + (r.matched_findings || 0) + '</td>' +
           '<td class="py-3 px-3"><div class="flex justify-center gap-1">' +
           '<button onclick="moveRule(' + r.id + ',\'up\')" class="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" title="Move up"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg></button>' +
           '<button onclick="moveRule(' + r.id + ',\'down\')" class="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" title="Move down"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></button>' +
-          '</div></td></tr>';
+          '</div></td>' +
+          '<td class="py-3 px-2 text-right">' + (r.id === CATCH_ALL
+            ? '<span class="text-[10px] uppercase font-bold text-slate-400 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-0.5">catch-all</span>'
+            : '<button onclick="deleteRule(' + r.id + ')" class="text-[11px] px-2 py-1 rounded border border-red-400/40 text-red-500 hover:bg-red-500/10">Delete</button>') +
+          '</td></tr>';
       }).join('');
+      var note = document.getElementById('rulesNote');
+      if (note) note.textContent = d.unmatched
+        ? (d.unmatched + ' open findings currently match no rule.')
+        : 'Every open finding is matched by a rule.';
     });
   }
+
+  function deleteRule(id) {
+    var rule = rules.filter(function (r) { return r.id === id; })[0];
+    if (!rule) return;
+    if (!confirm('Delete rule #' + rule.priority_order + '? Every finding will be recalculated against the remaining rules.')) return;
+    fetch('/api/sla-rules/' + id, { method: 'DELETE' }).then(function (r) {
+      return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+    }).then(function (res) {
+      if (!res.ok) { toast(res.d.detail || 'Could not delete the rule', false); return; }
+      toast('Rule deleted — ' + (res.d.recalculated || 0) + ' findings recalculated', true);
+      loadRules();
+    }).catch(function (e) { toast(e.message, false); });
+  }
+  window.deleteRule = deleteRule;
   function toggleRule(id) {
-    api('/api/sla-rules/' + id + '/toggle', { method: 'POST', body: '{}' }).then(function () { toast('Rule toggled — SLAs recalculated', true); loadRules(); }).catch(function (e) { toast(e.message, false); });
+    api('/api/sla-rules/' + id + '/toggle', { method: 'POST', body: '{}' }).then(function (d) { toast('Rule toggled — ' + (d.recalculated || 0) + ' findings recalculated', true); loadRules(); }).catch(function (e) { toast(e.message, false); });
   }
   function moveRule(id, dir) {
     api('/api/sla-rules/' + id + '/move', { method: 'POST', body: JSON.stringify({ direction: dir }) })
-      .then(function () { toast('Rule reordered — SLAs recalculated', true); loadRules(); }).catch(function (e) { toast(e.message, false); });
+      .then(function (d) { toast('Rule reordered — ' + (d.recalculated || 0) + ' findings recalculated', true); loadRules(); }).catch(function (e) { toast(e.message, false); });
   }
   function recalc() {
     api('/api/sla-rules/recalculate', { method: 'POST' }).then(function (d) { toast('Recalculated ' + d.recalculated + ' findings', true); }).catch(function (e) { toast(e.message, false); });
@@ -138,15 +344,17 @@
       '<div class="flex justify-between items-start"><h3 class="font-bold text-lg">Add SLA Rule</h3><button class="text-slate-400 hover:text-white" onclick="closeRuleModal()">✕</button></div>' +
       '<form id="addRuleForm" class="space-y-3 mt-4">' +
       '<div class="grid grid-cols-3 gap-3">' +
-      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Source</label>' + sel('rSource', ['VA', 'CIS', 'Any']) + '</div>' +
-      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Severity</label>' + sel('rSeverity', ['Critical', 'High', 'Medium', 'Low', 'Info', 'Any']) + '</div>' +
-      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Asset Scope</label>' + sel('rScope', ['Crown Jewel', 'PCI', 'Published', 'Infrastructure', 'Any']) + '</div>' +
-      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Asset Type</label>' + sel('rType', ['Server', 'Firewall', 'Database', 'Router', 'Any']) + '</div>' +
-      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Environment</label>' + sel('rEnv', ['Production', 'Test', 'DR', 'Any']) + '</div>' +
-      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">SLA Days</label><input id="rDays" type="number" min="1" value="30" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none"></div>' +
-      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Approach %</label><input id="rAppr" type="number" min="1" max="99" value="70" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none"></div>' +
-      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Retest %</label><input id="rRet" type="number" min="1" max="99" value="80" class="w-full text-sm rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 outline-none"></div>' +
-      '</div><button class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold">Create Rule</button></form>';
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Source</label>' + sel('rSource', DIM.sources) + '</div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Severity</label>' + sel('rSeverity', DIM.severities) + '</div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Asset Scope</label>' + sel('rScope', DIM.scopes) + '</div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Asset Type</label>' + sel('rType', DIM.types) + '</div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Environment</label>' + sel('rEnv', DIM.environments) + '</div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">SLA Days</label><input id="rDays" type="number" min="1" value="30" class="flt"></div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Approach %</label><input id="rAppr" type="number" min="1" max="99" value="70" class="flt"></div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Retest %</label><input id="rRet" type="number" min="1" max="99" value="80" class="flt"></div>' +
+      '</div>' +
+      '<p class="text-[11px] text-slate-400">Rules are evaluated top to bottom and the first match wins, so put the narrow rules above the broad ones. A new rule is added at the bottom, just above the catch-all.</p>' +
+      '<button class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold">Create Rule</button></form>';
     document.getElementById('ruleModal').classList.remove('hidden');
     document.getElementById('ruleModal').classList.add('flex');
     document.getElementById('addRuleForm').addEventListener('submit', function (e) {
@@ -156,7 +364,7 @@
         asset_scope: document.getElementById('rScope').value, asset_type: document.getElementById('rType').value,
         environment: document.getElementById('rEnv').value, sla_days: +document.getElementById('rDays').value,
         approaching_pct: +document.getElementById('rAppr').value, retest_pct: +document.getElementById('rRet').value,
-      }) }).then(function () { toast('Rule created — SLAs recalculated', true); closeRuleModal(); loadRules(); })
+      }) }).then(function (d) { toast('Rule created — ' + (d.recalculated || 0) + ' findings recalculated', true); closeRuleModal(); loadRules(); })
         .catch(function (err) { toast(err.message, false); });
     });
   }
@@ -200,6 +408,304 @@
       }).join('') : '<p class="text-xs text-slate-400">No policy changes recorded.</p>';
     });
   }
-  loadRules(); loadLog();
+  // ---------------- tabs ----------------
+  function showTab(name) {
+    document.querySelectorAll('[data-pane]').forEach(function (el) {
+      el.classList.toggle('hidden', el.dataset.pane !== name);
+    });
+    document.querySelectorAll('.tab').forEach(function (b) {
+      var on = b.dataset.tab === name;
+      b.className = 'tab px-4 py-2 rounded-lg text-sm font-medium ' + (on
+        ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white'
+        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200');
+    });
+    var pa = document.getElementById('policyActions');
+    var ua = document.getElementById('userActions');
+    if (pa) pa.classList.toggle('hidden', name !== 'policy');
+    if (ua) ua.classList.toggle('hidden', name !== 'users');
+    if (name === 'users' && !USERS.length) loadUsers();
+    if (name === 'maintenance') loadStats();
+    try { history.replaceState(null, '', '#' + name); } catch (e) {}
+  }
+  document.querySelectorAll('.tab').forEach(function (b) {
+    b.addEventListener('click', function () { showTab(b.dataset.tab); });
+  });
+
+  // ---------------- users & access ----------------
+  var USERS = [], MODULES = [], LEVELS = ['none', 'read', 'write'], ME = '';
+  var SCOPES = [], SOURCES = [], UNSCOPED_LABEL = 'Unscoped / Default Asset';
+  var LEVEL_LABEL = { none: 'No access', read: 'View', write: 'View & edit' };
+  var SHORT_LABEL = { sla_tracking: 'SLA', retests: 'Retest', settings: 'Settings' };
+
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) {
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+
+  // The platform must never end up with nobody who can administer it. The
+  // server has always refused this; the button is now simply not offered, so
+  // the rule is visible instead of only being discovered by pressing it.
+  function lastAdmin(u) {
+    if (u.role !== 'admin' || !u.is_active) return false;
+    return USERS.filter(function (x) { return x.role === 'admin' && x.is_active; }).length <= 1;
+  }
+
+  function loadUsers() {
+    return api('/api/users').then(function (d) {
+      USERS = d.users; MODULES = d.modules; LEVELS = d.levels; ME = d.me;
+      SCOPES = d.scopes || []; SOURCES = d.sources || [];
+      UNSCOPED_LABEL = d.unscoped_label || UNSCOPED_LABEL;
+      document.getElementById('uTotal').textContent = USERS.length;
+      document.getElementById('uAdmins').textContent = USERS.filter(function (u) { return u.role === 'admin'; }).length;
+      document.getElementById('uActive').textContent = USERS.filter(function (u) { return u.is_active; }).length;
+      document.getElementById('uDisabled').textContent = USERS.filter(function (u) { return !u.is_active; }).length;
+
+      document.getElementById('userHead').innerHTML =
+        '<th class="py-3 px-4">User</th>' +
+        MODULES.map(function (m) { return '<th class="py-3 px-1.5 whitespace-nowrap">' + esc(SHORT_LABEL[m.key] || m.label) + '</th>'; }).join('') +
+        '<th class="py-3 px-3 text-right sticky right-0 bg-slate-50 dark:bg-slate-800">Account</th>';
+
+      document.getElementById('userBody').innerHTML = USERS.map(function (u) {
+        var isAdmin = u.role === 'admin';
+        var cells = MODULES.map(function (m) {
+          if (isAdmin) {
+            return '<td class="py-2.5 px-1.5"><span class="text-[11px] font-semibold text-blue-600 dark:text-blue-400">View &amp; edit</span></td>';
+          }
+          return '<td class="py-2.5 px-1.5"><select class="flt acl" data-user="' + u.id + '" data-module="' + m.key + '" style="width:104px">' +
+            LEVELS.map(function (l) {
+              return '<option value="' + l + '"' + (u.access[m.key] === l ? ' selected' : '') + '>' + LEVEL_LABEL[l] + '</option>';
+            }).join('') + '</select></td>';
+        }).join('');
+        return '<tr class="border-b border-slate-100 dark:border-slate-800/60 ' + (u.is_active ? '' : 'opacity-50') + '">' +
+          '<td class="py-2.5 px-4 whitespace-nowrap"><div class="font-semibold">' + esc(u.full_name || u.username) + '</div>' +
+          '<div class="text-[11px] text-slate-400">' + esc(u.username) + ' · ' + (isAdmin ? 'administrator' : 'custom') +
+          (u.username === ME ? ' · you' : '') + '</div></td>' + cells +
+          '<td class="py-2.5 px-3 text-right whitespace-nowrap sticky right-0 bg-white dark:bg-slate-900 border-l border-slate-100 dark:border-slate-800">' +
+          (lastAdmin(u)
+            ? '<button disabled title="This is the only administrator left. Disabling it would lock everyone out of Users, the SLA policy and Maintenance — promote another account first." ' +
+              'class="text-[11px] px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed">Disable</button> '
+            : '<button onclick="toggleUser(' + u.id + ',' + (u.is_active ? 'false' : 'true') + ')" class="text-[11px] px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">' +
+              (u.is_active ? 'Disable' : 'Enable') + '</button> ') +
+          '<button onclick="resetPassword(' + u.id + ')" class="text-[11px] px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">Reset</button> ' +
+          (u.username === ME ? '' :
+            '<button onclick="removeUser(' + u.id + ')" class="text-[11px] px-2 py-1 rounded border border-red-400/40 text-red-500 hover:bg-red-500/10">Delete</button>') +
+          '</td></tr>';
+      }).join('');
+
+      document.querySelectorAll('select.acl').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+          var id = +sel.dataset.user;
+          var user = USERS.filter(function (u) { return u.id === id; })[0];
+          var access = Object.assign({}, user.access);
+          access[sel.dataset.module] = sel.value;
+          saveUser(id, { access: access }, 'Access updated for ' + user.username);
+        });
+      });
+
+      renderReach();
+    }).catch(function (e) { toast(e.message, false); });
+  }
+
+  function tick(kind, userId, value, label, on) {
+    return '<label class="inline-flex items-center gap-1.5 mr-3 mb-1 text-[12.5px] whitespace-nowrap">' +
+      '<input type="checkbox" class="reach" data-kind="' + kind + '" data-user="' + userId + '"' +
+      ' value="' + esc(value) + '"' + (on ? ' checked' : '') + '> ' + esc(label) + '</label>';
+  }
+
+  function renderReach() {
+    var rows = USERS.filter(function (u) { return u.role !== 'admin'; });
+    var body = document.getElementById('reachBody');
+    if (!body) return;
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="3" class="py-6 px-4 text-center text-slate-400 text-[13px]">' +
+        'Every account is an administrator, so there is nothing to restrict.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(function (u) {
+      var sourceCellsWarning = '';
+      var held = u.scopes || [];
+      var srcs = u.sources || [];
+      var scopeCells = SCOPES.map(function (sc) {
+        return tick('scope', u.id, sc, sc, held.indexOf(sc) > -1);
+      }).join('') + tick('unscoped', u.id, '1', UNSCOPED_LABEL, !!u.unscoped);
+      if (!held.length && !u.unscoped) {
+        scopeCells += '<div class="text-[11.5px] text-amber-600 dark:text-amber-400 mt-1">' +
+          'Nothing ticked — this account sees an empty platform.</div>';
+      }
+      if (!srcs.length) {
+        sourceCellsWarning = '<div class="text-[11.5px] text-amber-600 dark:text-amber-400 mt-1">' +
+          'Nothing ticked — no assessment reaches this account.</div>';
+      } else { sourceCellsWarning = ''; }
+      var sourceCells = SOURCES.map(function (sv) {
+        return tick('source', u.id, sv, sv, srcs.indexOf(sv) > -1);
+      }).join('');
+      return '<tr class="border-b border-slate-100 dark:border-slate-800/60 ' +
+        (u.is_active ? '' : 'opacity-50') + '">' +
+        '<td class="py-3 px-4 align-top whitespace-nowrap"><div class="font-semibold">' +
+        esc(u.full_name || u.username) + '</div>' +
+        '<div class="text-[11px] text-slate-400">' + esc(u.username) + '</div></td>' +
+        '<td class="py-3 px-4 align-top">' + scopeCells + '</td>' +
+        '<td class="py-3 px-4 align-top">' + sourceCells + sourceCellsWarning + '</td></tr>';
+    }).join('');
+
+    document.querySelectorAll('input.reach').forEach(function (box) {
+      box.addEventListener('change', function () {
+        var id = +box.dataset.user;
+        var user = USERS.filter(function (u) { return u.id === id; })[0];
+        var body = {};
+        body.scopes = collect('scope', id);
+        body.sources = collect('source', id);
+        var un = document.querySelector('input.reach[data-kind="unscoped"][data-user="' + id + '"]');
+        body.unscoped = !!(un && un.checked);
+        saveUser(id, body, 'Data reach updated for ' + user.username);
+      });
+    });
+  }
+
+  function collect(kind, id) {
+    var out = [];
+    document.querySelectorAll('input.reach[data-kind="' + kind + '"][data-user="' + id + '"]')
+      .forEach(function (b) { if (b.checked) out.push(b.value); });
+    return out;
+  }
+
+  function saveUser(id, body, message) {
+    return api('/api/users/' + id, { method: 'PUT', body: JSON.stringify(body) })
+      .then(function () { toast(message, true); loadUsers(); })
+      .catch(function (e) { toast(e.message, false); loadUsers(); });
+  }
+  function toggleUser(id, active) {
+    var u = USERS.filter(function (x) { return x.id === id; })[0];
+    saveUser(id, { is_active: active }, (active ? 'Enabled ' : 'Disabled ') + u.username);
+  }
+  function resetPassword(id) {
+    var u = USERS.filter(function (x) { return x.id === id; })[0];
+    var pw = prompt('New password for ' + u.username + ' (minimum 4 characters)');
+    if (!pw) return;
+    saveUser(id, { password: pw }, 'Password changed for ' + u.username);
+  }
+  function removeUser(id) {
+    var u = USERS.filter(function (x) { return x.id === id; })[0];
+    if (!confirm('Delete the account "' + u.username + '"? This cannot be undone.')) return;
+    fetch('/api/users/' + id, { method: 'DELETE' }).then(function (r) {
+      return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+    }).then(function (res) {
+      if (!res.ok) { toast(res.d.detail || 'Could not delete the account', false); return; }
+      toast('Account deleted', true); loadUsers();
+    });
+  }
+  window.toggleUser = toggleUser; window.resetPassword = resetPassword; window.removeUser = removeUser;
+
+  function openAddUser() {
+    var rows = MODULES.map(function (m) {
+      return '<div class="flex items-center justify-between gap-3 py-1.5">' +
+        '<span class="text-[13px]">' + esc(m.label) + '</span>' +
+        '<select class="flt newacl" data-module="' + m.key + '" style="width:150px">' +
+        LEVELS.map(function (l) {
+          return '<option value="' + l + '"' + (l === 'read' ? ' selected' : '') + '>' + LEVEL_LABEL[l] + '</option>';
+        }).join('') + '</select></div>';
+    }).join('');
+    document.getElementById('userModalBody').innerHTML =
+      '<div class="flex justify-between items-start"><h3 class="font-bold text-lg">Add user</h3>' +
+      '<button class="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xl leading-none" onclick="closeUserModal()">&times;</button></div>' +
+      '<form id="addUserForm" class="space-y-3 mt-4">' +
+      '<div class="grid grid-cols-2 gap-3">' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Username</label><input id="nUser" required class="flt" placeholder="m.saleem"></div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Full name</label><input id="nName" class="flt" placeholder="Mido Saleem"></div>' +
+      '</div>' +
+      '<div><label class="block text-[11px] uppercase text-slate-400 mb-1">Password</label><input id="nPass" type="password" required class="flt" placeholder="minimum 4 characters"></div>' +
+      '<label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" id="nAdmin"> Administrator — full access to every page, and manages users</label>' +
+      '<div id="aclBlock" class="rounded-xl border border-slate-200 dark:border-slate-800 p-3">' +
+      '<div class="text-[11px] uppercase tracking-wide text-slate-400 mb-1">Access per page</div>' + rows + '</div>' +
+      '<button class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold">Create user</button></form>';
+    var modal = document.getElementById('userModal');
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+    document.getElementById('nAdmin').addEventListener('change', function (e) {
+      document.getElementById('aclBlock').classList.toggle('hidden', e.target.checked);
+    });
+    document.getElementById('addUserForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var access = {};
+      document.querySelectorAll('select.newacl').forEach(function (sel) { access[sel.dataset.module] = sel.value; });
+      var scopes = [], sources = [];
+      document.querySelectorAll('input.newscope').forEach(function (b) { if (b.checked) scopes.push(b.value); });
+      document.querySelectorAll('input.newsource').forEach(function (b) { if (b.checked) sources.push(b.value); });
+      var un = document.getElementById('nUnscoped');
+      api('/api/users', { method: 'POST', body: JSON.stringify({
+        username: document.getElementById('nUser').value.trim(),
+        full_name: document.getElementById('nName').value.trim(),
+        password: document.getElementById('nPass').value,
+        role: document.getElementById('nAdmin').checked ? 'admin' : 'custom',
+        access: access,
+        scopes: scopes,
+        sources: sources,
+        unscoped: !un || un.checked
+      }) }).then(function (d) {
+        toast('Created ' + d.user.username, true); closeUserModal(); loadUsers();
+      }).catch(function (err) { toast(err.message, false); });
+    });
+  }
+  function closeUserModal() {
+    var modal = document.getElementById('userModal');
+    modal.classList.add('hidden'); modal.classList.remove('flex');
+  }
+  window.openAddUser = openAddUser; window.closeUserModal = closeUserModal;
+
+  // ---------------- maintenance ----------------
+  var RESET_LABEL = {
+    findings: ['Clear the assessment history', 'CLEAR FINDINGS',
+               'Every finding, exception and uploaded assessment will be deleted. Assets, policy and accounts are kept.'],
+    assets:   ['Clear findings and the asset register', 'CLEAR ALL DATA',
+               'Findings, exceptions, assessments and every asset will be deleted, then the inventory file is reloaded.'],
+    all:      ['Factory reset', 'RESET EVERYTHING',
+               'Findings, exceptions, assessments, assets, the SLA policy and the change log will be deleted. The default policy is seeded again. Accounts are kept.']
+  };
+
+  function loadStats() {
+    api('/api/summary').then(function (d) {
+      var cards = [['Assets', d.assets_total], ['Findings', d.total_findings],
+                   ['Open', d.total_open], ['Exceptions', d.active_exceptions],
+                   ['Assessments', d.last_assessment ? (d.last_assessment.reference_code || '—') : '—']];
+      document.getElementById('mStats').innerHTML = cards.map(function (c) {
+        return '<div class="rounded-lg bg-slate-50 dark:bg-slate-800/50 px-3 py-2.5">' +
+          '<div class="text-[11px] uppercase tracking-wide text-slate-400">' + c[0] + '</div>' +
+          '<div class="text-xl font-bold mt-0.5">' + (typeof c[1] === 'number' ? c[1].toLocaleString() : c[1]) + '</div></div>';
+      }).join('');
+    }).catch(function () {});
+  }
+
+  function resetData(scope) {
+    var meta = RESET_LABEL[scope];
+    var typed = prompt(meta[0] + '\n\n' + meta[2] + '\n\nType ' + meta[1] + ' to confirm.');
+    if (typed === null) return;
+    if (typed.trim().toUpperCase() !== meta[1]) {
+      toast('Nothing was deleted — the confirmation did not match', false);
+      return;
+    }
+    // The typed word goes to the server as well - it is checked there, so a
+    // reset cannot happen through anything but a deliberate confirmation.
+    api('/api/admin/reset-data', { method: 'POST',
+        body: JSON.stringify({ scope: scope, confirm: typed.trim() }) })
+      .then(function (d) {
+        var box = document.getElementById('resetResult');
+        box.classList.remove('hidden');
+        box.innerHTML = '<div class="rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-sm text-emerald-700 dark:text-emerald-400">' +
+          '<b>Reset complete (' + d.scope + ').</b> Removed ' + d.removed.findings + ' findings, ' +
+          d.removed.exceptions + ' exceptions, ' + d.removed.assessments + ' assessments, ' +
+          d.removed.assets + ' assets' + (d.removed.sla_rules ? ', ' + d.removed.sla_rules + ' policy rules' : '') + '.' +
+          (d.inventory_reloaded ? ' Inventory reloaded: ' + d.inventory_reloaded + ' assets.' : '') +
+          '</div>';
+        toast('Platform reset', true);
+        loadStats(); loadRules(); loadLog();
+      })
+      .catch(function (e) { toast(e.message, false); });
+  }
+  window.resetData = resetData;
+
+  loadDimensions(); loadRules(); loadLog();
+  // Only tabs this account actually has. A hash of #users on an account that
+  // is not an administrator must land on the policy tab, not on an empty page.
+  var TABS = Array.prototype.map.call(document.querySelectorAll('.tab'),
+                                      function (b) { return b.dataset.tab; });
+  var startTab = (location.hash || '#policy').slice(1);
+  showTab(TABS.indexOf(startTab) > -1 ? startTab : (TABS[0] || 'policy'));
 </script>
 {% endblock %}

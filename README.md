@@ -1,13 +1,5 @@
 # Assurance Finding Lifecycle & SLA Management Platform
 
-**Status**: ✓ Production Ready | **Assets**: 1,208 loaded | **Server**: http://localhost:8000
-
-## Login Credentials
-- **Username**: `Assurance Head`
-- **Password**: `admin`
-
----
-
 A full-stack platform for ingesting vulnerability scans, correlating findings across
 scans (reappearance tracking), and enforcing firewall-style rule-based SLA policies —
 built for Banque Misr.
@@ -29,15 +21,19 @@ cd assurance_platform
 python -m venv venv
 # Windows: venv\Scripts\activate   |  macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
-python load_assets.py  # Load 1,208 assets from Asset_Inventory.xlsx
 uvicorn app.main:app --reload --port 8000
 ```
 
-Open http://localhost:8000 and login with:
-- **Username**: `Assurance Head`
-- **Password**: `admin`
+Open http://localhost:8000 — the platform seeds itself on first boot with the
+default admin account (`admin` / `admin`) and the default SLA policy rules.
+Findings and assets are intentionally left empty so they come entirely from
+your uploaded scan / inventory reports.
 
-The platform auto-loads assets on startup and is ready to receive VA and CIS scan uploads.
+Run the seeder manually if you ever need to re-seed an empty DB:
+
+```bash
+python -m sample_data.seed_data
+```
 
 ## VA Scan import format
 

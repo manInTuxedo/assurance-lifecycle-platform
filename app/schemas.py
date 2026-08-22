@@ -25,7 +25,11 @@ class RetestResultIn(BaseModel):
 
 
 class ExceptionIn(BaseModel):
-    reason: str = "Risk Accepted"
+    reason: str = "Compensating Control"
+    justification: str = ""
+    compensating_control: Optional[str] = None
+    approval_ref: Optional[str] = None
+    starts_at: Optional[date] = None
     expires_at: Optional[date] = None
 
 

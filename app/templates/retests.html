@@ -5,13 +5,15 @@
 <div class="flex items-center justify-between">
   <div>
     <h1 class="text-2xl font-bold">Retest & Validation</h1>
-    <p class="text-sm text-slate-400 mt-0.5">Findings queued for re-scan validation after remediation</p>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Findings the policy flagged for validation, plus everything already validated</p>
   </div>
   <a href="/reports" class="text-sm border border-slate-300 dark:border-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">Validation Report</a>
 </div>
 
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="retestKpis"></div>
+
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-  <div class="xl:col-span-2 overflow-x-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+  <div class="xl:col-span-2 overflow-x-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
     <table class="w-full text-sm">
       <thead class="bg-slate-50 dark:bg-slate-800/50 text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-700">
         <tr>
@@ -21,19 +23,21 @@
       </thead>
       <tbody id="retestBody"></tbody>
     </table>
+    <div id="retestNote" class="px-4 py-3 text-[12px] text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800"></div>
     <div id="retestEmpty" class="hidden py-10 text-center text-slate-400 text-sm">No findings awaiting validation.</div>
   </div>
   <div class="space-y-6">
-    <div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-      <h3 class="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-4">Validation Outcomes</h3>
+    <div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <h3 class="font-semibold text-[15px] text-slate-900 dark:text-slate-100 mb-4">Validation Outcomes</h3>
       <div class="h-52"><canvas id="valChart"></canvas></div>
     </div>
-    <div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-      <h3 class="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-3">How it works</h3>
+    <div class="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <h3 class="font-semibold text-[15px] text-slate-900 dark:text-slate-100 mb-3">How it works</h3>
       <ul class="text-xs text-slate-400 space-y-2">
         <li><span class="text-amber-400 font-semibold">Pending</span> — queued for re-scan after remediation.</li>
         <li><span class="text-emerald-500 font-semibold">Passed</span> — re-scan confirms remediation; finding closes.</li>
-        <li><span class="text-red-500 font-semibold">Failed</span> — vulnerability still present; finding returns to Open for further remediation.</li>
+        <li><span class="text-red-500 font-semibold">Failed</span> — still present; the finding returns to Open and keeps its original age.</li>
+        <li class="pt-1 border-t border-slate-200 dark:border-slate-800">A retest closure is recorded as <b>Closed — by &lt;user&gt;</b>. A closure proven by a credentialed assessment is recorded as <b>Closed — automatic</b>, with the assessment reference.</li>
       </ul>
     </div>
   </div>
@@ -41,15 +45,28 @@
 {% endblock %}
 {% block scripts %}
 <script>
-  var canWrite = {{ 'true' if current_user.role != 'read_only' else 'false' }};
+  var _forecastChart, _domainChart, _valChart;
+  var canWrite = {{ 'true' if can_write else 'false' }};
+  function slaBadge(s) {
+    var map = { 'Within SLA': 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+      'Approaching SLA': 'bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30',
+      'SLA Exceeded': 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30',
+      'Past Due': 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30',
+      'Under Exception': 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30' };
+    return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold border ' + (map[s] || map['Within SLA']) + '">' + s + '</span>';
+  }
   function sevBadge(s) {
     var map = { Critical: 'bg-red-500/15 text-red-500 border-red-500/40', High: 'bg-orange-500/15 text-orange-500 border-orange-500/40',
       Medium: 'bg-amber-400/15 text-amber-500 border-amber-400/40', Low: 'bg-sky-400/15 text-sky-500 border-sky-400/40', Info: 'bg-slate-400/15 text-slate-400 border-slate-400/40' };
     return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold border ' + (map[s] || map.Info) + '">' + s + '</span>';
   }
   function load() {
-    fetch('/api/findings?retest=Pending&limit=500').then(function (r) { return r.json(); }).then(function (d) {
+    api('/api/findings?retest=Pending&page_size=200').then(function (d) {
       var tb = document.getElementById('retestBody');
+      var note = document.getElementById('retestNote');
+      if (note) note.textContent = d.total > d.showing
+        ? (d.showing + ' of ' + d.total + ' findings awaiting validation')
+        : (d.total + ' findings awaiting validation');
       document.getElementById('retestEmpty').classList.toggle('hidden', d.findings.length > 0);
       tb.innerHTML = d.findings.map(function (f) {
         var actions = canWrite ?
@@ -58,18 +75,29 @@
           '<button onclick="validate(' + f.id + ',\'failed\')" class="text-xs px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold">Failed</button></div>' :
           '<span class="text-xs text-slate-400">—</span>';
         return '<tr class="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40">' +
-          '<td class="py-3 px-4"><div class="font-semibold">' + f.finding_code + '</div><div class="text-xs text-slate-400 max-w-[220px] truncate">' + f.plugin_name + '</div></td>' +
-          '<td class="py-3 px-3">' + sevBadge(f.severity) + '</td>' +
-          '<td class="py-3 px-3 text-xs">' + (f.asset ? f.asset.name + '<div class="text-slate-400">' + f.ip_address + '</div>' : f.ip_address) + '</td>' +
-          '<td class="py-3 px-3 text-xs font-semibold">' + f.age_days + 'd</td>' +
-          '<td class="py-3 px-3 text-xs">' + f.sla_status + '<div class="text-slate-400">' + (f.due_date || '').slice(0, 10) + '</div></td>' +
-          '<td class="py-3 px-3 text-xs">' + (f.owner || '—') + '</td>' +
-          '<td class="py-3 px-3">' + actions + '</td></tr>';
+          '<td class="py-2.5 px-4"><div class="font-semibold">' + f.finding_code + '</div><div class="text-[11px] text-slate-400 max-w-[230px] truncate">' + f.plugin_name + '</div></td>' +
+          '<td class="py-2.5 px-3">' + sevBadge(f.severity) + '</td>' +
+          '<td class="py-2.5 px-3 text-[12px]"><div class="truncate max-w-[170px]">' + (f.asset ? f.asset.name : 'Unmapped') + '</div><div class="text-slate-400">' + f.ip_address + '</div></td>' +
+          '<td class="py-2.5 px-3 text-[12px] font-semibold whitespace-nowrap">' + f.age_days + 'd</td>' +
+          '<td class="py-2.5 px-3 whitespace-nowrap">' + slaBadge(f.sla_status) +
+          '<div class="text-[10px] text-slate-400 mt-1">due ' + (f.due_date || '—').slice(0, 10) + '</div></td>' +
+          '<td class="py-2.5 px-3 text-[12px]">' + (f.owner || '—') + '</td>' +
+          '<td class="py-2.5 px-3">' + actions + '</td></tr>';
       }).join('');
     });
     api('/api/dashboard/charts').then(function (ch) {
-      if (window.valChart) window.valChart.destroy();
-      window.valChart = new Chart(document.getElementById('valChart'), {
+      var labels = ch.retest_doughnut.labels, values = ch.retest_doughnut.values;
+      var tone = ['text-amber-600 dark:text-amber-400', 'text-emerald-600 dark:text-emerald-400',
+                  'text-red-600 dark:text-red-400'];
+      var blurb = ['queued for validation', 'confirmed remediated', 'still present after retest'];
+      document.getElementById('retestKpis').innerHTML = labels.map(function (l, i) {
+        return '<div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">' +
+          '<div class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">' + l + '</div>' +
+          '<div class="mt-1.5 text-2xl font-bold ' + tone[i] + '">' + values[i].toLocaleString() + '</div>' +
+          '<div class="text-[11px] text-slate-400 mt-0.5">' + blurb[i] + '</div></div>';
+      }).join('');
+      if (_valChart) _valChart.destroy();
+      _valChart = new Chart(document.getElementById('valChart'), {
         type: 'doughnut',
         data: { labels: ch.retest_doughnut.labels,
           datasets: [{ data: ch.retest_doughnut.values, backgroundColor: ['#0ea5e9', '#10b981', '#ef4444', '#64748b'],
