@@ -17,11 +17,15 @@ built for Banque Misr.
 ## Quick start
 
 ```bash
-cd assurance_platform
 python -m venv venv
 # Windows: venv\Scripts\activate   |  macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
+
+# Development:
 uvicorn app.main:app --reload --port 8000
+
+# Production (on the AWS server — reachable from the internet, no auto-reload):
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 Open http://localhost:8000 — the platform seeds itself on first boot with the
